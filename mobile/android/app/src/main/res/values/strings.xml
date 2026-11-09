@@ -15,8 +15,6 @@
     <string name="nav_refresh">Actualizar</string>
     <string name="nav_share">Compartir</string>
     <string name="nav_info">Info</string>
-    <string name="nav_channel">Canal</string>
-    <string name="cd_channel">Canal oficial de WhatsApp</string>
 
     <string name="welcome_title">Cargando el periódico</string>
     <string name="welcome_message">Preparando las últimas publicaciones…</string>

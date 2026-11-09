@@ -70,9 +70,6 @@ docs/data/*.csv
 *.sqlite3
 /src/generated/prisma
 
-# Datos locales del canal de WhatsApp
-data/channel/.cache/
-
 # El Observador Cubano - aplicación Android
 mobile/backup/
 mobile/native-staging/

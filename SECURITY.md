@@ -235,8 +235,7 @@ Los resultados son de este entorno. No se extrapolan a producción.
 
 | Versión | Soporte |
 |---|---|
-| 1.2.x | Recibe correcciones de seguridad y actualizaciones. |
-| 1.1.x | Solo actualizable a la última versión estable. |
+| 1.1.x | Recibe correcciones de seguridad y actualizaciones. |
 | 1.0.x y anteriores | Solo actualizables a la última versión estable. |
 
 La app (`cu.observadorcubano.app`) se distribuye **solo** mediante GitHub Releases del repositorio
@@ -260,22 +259,6 @@ físico desbloqueado.
 - **Detección de secretos y rutas personales** en la integración continua.
 - **Protección de la rama principal**, revisión mediante pull request y CI obligatoria.
 - **Correo noreply** en los commits nuevos; el correo personal no se publica.
-
-### 9.5 Feed del canal de WhatsApp
-
-- **Sin scraping ni sesiones simuladas:** el contenido se registra con un CLI local y se publica como
-  JSON versionado. No se automatiza WhatsApp Web ni se usan librerías no oficiales.
-- **Sin tokens en el APK:** la app solo descarga el feed público. Publicar requiere un clon con
-  permisos de escritura y `gh`; nunca se incluye una credencial en el binario.
-- **Solo HTTPS:** se rechazan URLs HTTP en publicaciones, imágenes, vídeos y enlaces.
-- **Validación en CI:** pruebas de normalización, unificación y paginación, además de
-  `channel:validate`, que comprueba la coherencia entre `posts.json`, `index.json` y sus páginas.
-- **Revisión editorial:** las coincidencias medias con Blogger no se unifican solas; requieren una
-  decisión explícita registrada en `decisions.json`.
-- **Riesgo residual:** el feed depende de GitHub y jsDelivr. Si ambos fallan, la app usa la última
-  copia local; si el dispositivo no tiene ninguna, muestra un error con reintento.
-
-Los detalles operativos están en `WHATSAPP_CHANNEL.md`.
 
 ### 9.3 Limitaciones conocidas
 
