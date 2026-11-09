@@ -126,6 +126,7 @@ jobs:
           const versionName = (props.match(/^versionName=(.+)$/m) || [])[1];
           const versionCode = (props.match(/^versionCode=(.+)$/m) || [])[1];
           const pkg = JSON.parse(fs.readFileSync('mobile/package.json', 'utf8'));
+          const lock = JSON.parse(fs.readFileSync('mobile/package-lock.json', 'utf8'));
           if (!versionName || !versionCode) {
             throw new Error('version.properties debe definir versionName y versionCode');
           }
@@ -137,6 +138,9 @@ jobs:
           }
           if (versionName.trim() !== pkg.version) {
             throw new Error(`versionName ${versionName.trim()} no coincide con package.json ${pkg.version}`);
+          }
+          if (versionName.trim() !== lock.version || versionName.trim() !== lock.packages?.['']?.version) {
+            throw new Error(`versionName ${versionName.trim()} no coincide con package-lock.json ${lock.version}`);
           }
           console.log(`Versión ${versionName.trim()} (versionCode ${versionCode.trim()})`);
           NODE

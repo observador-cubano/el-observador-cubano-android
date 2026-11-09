@@ -61,6 +61,8 @@ jobs:
         run: |
           npm ci
           npm run build
+          npm run test:channel
+          npm run channel:validate
           npx cap sync android
 
       - name: Preparar keystore de firma
