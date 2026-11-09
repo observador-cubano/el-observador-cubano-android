@@ -100,9 +100,12 @@ public class MainActivity extends AppCompatActivity {
     private static final String FEED_URL =
         HOME_URL + "feeds/posts/default?alt=json&max-results=150";
     public static final String EXTRA_ARTICLE_URL = "article_url";
+    public static final String EXTRA_HISTORY_PROGRESS = "history_progress";
+    public static final String EXTRA_HISTORY_READER = "history_reader";
     private static final long EXIT_WINDOW_MS = 2000L;
     private static final long POPUP_TIMEOUT_MS = 8000L;
     private static final long SPLASH_FALLBACK_MS = 12000L;
+    private static final long PROGRESS_POLL_MS = 1200L;
     private static final long UPDATE_FIRST_CHECK_DELAY_MS = 1800L;
     private static final int REQUEST_NOTIFICATIONS = 4301;
     private static final byte[] TRANSPARENT_PNG = Base64.decode(
@@ -202,6 +205,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean sectionsFetchInFlight = false;
 
     private SavedArticlesStore savedStore;
+    private ReadingHistoryStore historyStore;
     private boolean pageIsArticle = false;
     private boolean readerModeActive = false;
     private boolean savingArticle = false;
@@ -210,6 +214,38 @@ public class MainActivity extends AppCompatActivity {
     private int pageInfoRequest = 0;
     private String currentArticleUrl = "";
     private String currentArticleTitle = "";
+    private String pendingRestoreUrl = "";
+    private double pendingRestoreProgress = -1d;
+    private boolean pendingRestoreReader = false;
+    private double lastReaderProgress = 0d;
+    private double lastPageProgress = 0d;
+    private boolean lastSnapshotReader = false;
+    private final Runnable progressPoll = new Runnable() {
+        @Override
+        public void run() {
+            if (!pageIsArticle || webView == null || isFinishing()) {
+                return;
+            }
+            webView.evaluateJavascript(ArticleScripts.SCROLL_STATE_JS, raw -> {
+                if (!pageIsArticle) {
+                    return;
+                }
+                JSONObject state = decodeJsObject(raw);
+                if (state == null) {
+                    return;
+                }
+                boolean reader = state.optBoolean("reader", false);
+                double progress = ReadingProgress.clamp(state.optDouble("progress", 0d));
+                lastSnapshotReader = reader;
+                if (reader) {
+                    lastReaderProgress = progress;
+                } else {
+                    lastPageProgress = progress;
+                }
+            });
+            root.postDelayed(this, PROGRESS_POLL_MS);
+        }
+    };
 
     private boolean isOnline = true;
     private boolean contentVisible = false;
@@ -239,6 +275,7 @@ public class MainActivity extends AppCompatActivity {
 
         ioExecutor = Executors.newSingleThreadExecutor();
         savedStore = new SavedArticlesStore(this);
+        historyStore = new ReadingHistoryStore(this);
 
         bindViews();
         observeSplashFirstFrame();
@@ -265,11 +302,25 @@ public class MainActivity extends AppCompatActivity {
 
         root.postDelayed(splashFallback, SPLASH_FALLBACK_MS);
 
-        String deepLink = getIntent() != null ? getIntent().getStringExtra(EXTRA_ARTICLE_URL) : null;
+        openFromIntent(getIntent());
+    }
+
+    /**
+     * Abre el artículo pedido por un intent, opcionalmente con la posición de
+     * lectura guardada en el historial. Si no hay artículo, carga la portada.
+     */
+    private void openFromIntent(Intent intent) {
+        String deepLink = intent != null ? intent.getStringExtra(EXTRA_ARTICLE_URL) : null;
         if (deepLink != null && UrlPolicy.classify(deepLink) == UrlPolicy.Action.INTERNAL) {
             String normalized = UrlPolicy.normalize(deepLink);
+            pendingRestoreUrl = normalized != null ? normalized : "";
+            pendingRestoreProgress = intent.getDoubleExtra(EXTRA_HISTORY_PROGRESS, -1d);
+            pendingRestoreReader = intent.getBooleanExtra(EXTRA_HISTORY_READER, false);
             loadUrl(normalized != null ? normalized : HOME_URL, true);
         } else {
+            pendingRestoreUrl = "";
+            pendingRestoreProgress = -1d;
+            pendingRestoreReader = false;
             loadHome(true);
         }
     }
@@ -463,6 +514,17 @@ public class MainActivity extends AppCompatActivity {
 
         webView.setBackgroundColor(ContextCompat.getColor(this, R.color.surface));
         webView.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
+        webView.setOnScrollChangeListener((view, scrollX, scrollY, oldScrollX, oldScrollY) -> {
+            if (!pageIsArticle || readerModeActive) {
+                return;
+            }
+            int range = Math.round(webView.getContentHeight() * webView.getScale())
+                - webView.getHeight();
+            lastSnapshotReader = false;
+            lastPageProgress = range > 0
+                ? ReadingProgress.clamp(scrollY / (double) range)
+                : 0d;
+        });
         webView.getSettings().setTextZoom(AppPrefs.getTextZoom(this));
         webView.setWebViewClient(new EocWebViewClient());
         webView.setWebChromeClient(new EocChromeClient());
@@ -1138,9 +1200,12 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         final boolean dark = AppPrefs.isDarkMode(this);
+        lastReaderProgress = 0d;
+        lastSnapshotReader = true;
         webView.evaluateJavascript(ArticleScripts.openReader(dark), value -> {
             boolean opened = "true".equals(value);
             readerModeActive = opened;
+            lastSnapshotReader = opened;
             updateArticleActions();
             if (!opened) {
                 Toast.makeText(MainActivity.this, R.string.reader_failed, Toast.LENGTH_SHORT).show();
@@ -1159,6 +1224,8 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, R.string.reader_off, Toast.LENGTH_SHORT).show();
             }
             readerModeActive = false;
+            lastReaderProgress = 0d;
+            lastSnapshotReader = false;
             updateArticleActions();
             return;
         }
@@ -1202,6 +1269,148 @@ public class MainActivity extends AppCompatActivity {
                 TextUtils.isEmpty(title) ? currentTitle : title
             );
             updateArticleActions();
+            if (pageIsArticle) {
+                if (historyStore != null) {
+                    historyStore.recordVisit(currentArticleUrl, currentArticleTitle);
+                }
+                root.removeCallbacks(progressPoll);
+                root.postDelayed(progressPoll, PROGRESS_POLL_MS);
+                applyPendingRestore(currentArticleUrl);
+            } else {
+                root.removeCallbacks(progressPoll);
+            }
+        });
+    }
+
+    /**
+     * Restaura la posición de lectura una sola vez, después de que el artículo
+     * esté listo. Si la entrada venía del modo lectura, se vuelve a abrir ese
+     * modo para conservar el contexto.
+     */
+    private void applyPendingRestore(String url) {
+        if (pendingRestoreProgress < 0d || TextUtils.isEmpty(pendingRestoreUrl)) {
+            return;
+        }
+        if (!sameArticleUrl(pendingRestoreUrl, url)) {
+            return;
+        }
+
+        final double progress = ReadingProgress.clamp(pendingRestoreProgress);
+        final boolean reader = pendingRestoreReader;
+        pendingRestoreUrl = "";
+        pendingRestoreProgress = -1d;
+        pendingRestoreReader = false;
+
+        if (reader) {
+            readerModeActive = true;
+            lastReaderProgress = progress;
+            lastSnapshotReader = true;
+            updateArticleActions();
+            root.postDelayed(() -> {
+                if (isFinishing()
+                    || webView == null
+                    || !pageIsArticle
+                    || !sameArticleUrl(url, currentArticleUrl)) {
+                    return;
+                }
+                webView.evaluateJavascript(
+                    ArticleScripts.openReader(AppPrefs.isDarkMode(this), progress),
+                    value -> {
+                        boolean opened = "true".equals(value);
+                        readerModeActive = opened;
+                        lastSnapshotReader = opened;
+                        updateArticleActions();
+                    }
+                );
+            }, 400L);
+            return;
+        }
+
+        root.postDelayed(() -> {
+            if (isFinishing()
+                || webView == null
+                || !pageIsArticle
+                || !sameArticleUrl(url, currentArticleUrl)) {
+                return;
+            }
+            webView.evaluateJavascript(
+                ArticleScripts.restorePageScroll(progress),
+                null
+            );
+            lastSnapshotReader = false;
+            lastPageProgress = progress;
+        }, 600L);
+    }
+
+    private boolean sameArticleUrl(String first, String second) {
+        if (TextUtils.isEmpty(first) || TextUtils.isEmpty(second)) {
+            return false;
+        }
+        if (first.equals(second)) {
+            return true;
+        }
+        try {
+            Uri a = Uri.parse(first);
+            Uri b = Uri.parse(second);
+            String pathA = a.getPath();
+            String pathB = b.getPath();
+            return pathA != null
+                && pathA.equals(pathB)
+                && a.getHost() != null
+                && a.getHost().equalsIgnoreCase(b.getHost());
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Guarda en el historial la última posición conocida sin consultar la
+     * página. Se usa justo antes de navegar, cuando el documento anterior ya
+     * está siendo reemplazado.
+     */
+    private void persistProgressSnapshot() {
+        if (historyStore == null
+            || !pageIsArticle
+            || TextUtils.isEmpty(currentArticleUrl)) {
+            return;
+        }
+        historyStore.saveProgress(
+            currentArticleUrl,
+            currentArticleTitle,
+            lastSnapshotReader ? lastReaderProgress : lastPageProgress,
+            lastSnapshotReader
+        );
+    }
+
+    /**
+     * Lee la posición actual de la página o del modo lectura y la guarda en el
+     * historial. Se llama al pausar la aplicación.
+     */
+    private void captureReadingProgress() {
+        if (historyStore == null
+            || webView == null
+            || !pageIsArticle
+            || TextUtils.isEmpty(currentArticleUrl)) {
+            return;
+        }
+        final String url = currentArticleUrl;
+        final String title = currentArticleTitle;
+        webView.evaluateJavascript(ArticleScripts.SCROLL_STATE_JS, raw -> {
+            JSONObject state = decodeJsObject(raw);
+            if (state == null) {
+                return;
+            }
+            boolean reader = state.optBoolean("reader", false);
+            double progress = ReadingProgress.clamp(state.optDouble("progress", 0d));
+            lastSnapshotReader = reader;
+            if (reader) {
+                // Se conserva para poder regenerar el modo lectura en el mismo
+                // punto al volver a primer plano o cambiar de tema.
+                lastReaderProgress = progress;
+            } else {
+                lastPageProgress = progress;
+            }
+            historyStore.saveProgress(url, title, progress, reader);
         });
     }
 
@@ -1223,8 +1432,12 @@ public class MainActivity extends AppCompatActivity {
             webView.evaluateJavascript(ArticleScripts.applyTheme(dark), null);
             if (readerModeActive && pageIsArticle) {
                 // El modo lectura se dibuja con su propia hoja de estilos: se
-                // vuelve a generar para que tome el tema recién elegido.
-                webView.evaluateJavascript(ArticleScripts.openReader(dark), null);
+                // vuelve a generar para que tome el tema recién elegido sin
+                // perder el punto de lectura.
+                webView.evaluateJavascript(
+                    ArticleScripts.openReader(dark, lastReaderProgress),
+                    null
+                );
             }
         }
     }
@@ -2158,10 +2371,17 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
             super.onPageStarted(view, url, favicon);
+            if (pageIsArticle) {
+                persistProgressSnapshot();
+            }
+            root.removeCallbacks(progressPoll);
             pageHadError = false;
             pageInfoRequest++;
             pageIsArticle = false;
             readerModeActive = false;
+            lastReaderProgress = 0d;
+            lastPageProgress = 0d;
+            lastSnapshotReader = false;
             currentArticleUrl = url == null ? "" : url;
             currentArticleTitle = "";
             progressBar.setProgress(0);
@@ -2460,6 +2680,9 @@ public class MainActivity extends AppCompatActivity {
         if (url != null && UrlPolicy.classify(url) == UrlPolicy.Action.INTERNAL) {
             String normalized = UrlPolicy.normalize(url);
             if (normalized != null) {
+                pendingRestoreUrl = normalized;
+                pendingRestoreProgress = intent.getDoubleExtra(EXTRA_HISTORY_PROGRESS, -1d);
+                pendingRestoreReader = intent.getBooleanExtra(EXTRA_HISTORY_READER, false);
                 loadUrl(normalized, false);
             }
         }
@@ -2477,6 +2700,11 @@ public class MainActivity extends AppCompatActivity {
         updateDataSaverUi();
         applyPreferences();
 
+        if (pageIsArticle && !isFinishing()) {
+            root.removeCallbacks(progressPoll);
+            root.postDelayed(progressPoll, PROGRESS_POLL_MS);
+        }
+
         if (updateManager != null) {
             runUpdateCheck(false);
             root.removeCallbacks(periodicUpdateCheck);
@@ -2487,6 +2715,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         root.removeCallbacks(periodicUpdateCheck);
+        root.removeCallbacks(progressPoll);
+        captureReadingProgress();
         if (webView != null) {
             webView.onPause();
         }
@@ -2497,6 +2727,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         root.removeCallbacks(splashFallback);
         root.removeCallbacks(periodicUpdateCheck);
+        root.removeCallbacks(progressPoll);
 
         if (updateManager != null) {
             updateManager.shutdown();

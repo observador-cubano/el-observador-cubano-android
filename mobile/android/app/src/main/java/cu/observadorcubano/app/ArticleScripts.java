@@ -376,6 +376,16 @@ final class ArticleScripts {
             document.documentElement.style.overflow = 'hidden';
             document.body.style.overflow = 'hidden';
             overlay.scrollTop = 0;
+            var start = __SCROLL__;
+            if (start > 0) {
+              var applyStart = function() {
+                var max = overlay.scrollHeight - overlay.clientHeight;
+                if (max > 0) overlay.scrollTop = max * start;
+              };
+              applyStart();
+              setTimeout(applyStart, 150);
+              setTimeout(applyStart, 600);
+            }
             return true;
           } catch (e) {
             return false;
@@ -413,9 +423,58 @@ final class ArticleScripts {
         })(__DARK__)
         """;
 
+    static final String SCROLL_STATE_JS = """
+        (function(){
+          try {
+            var overlay = document.getElementById('eoc-reader-overlay');
+            var el = overlay;
+            var reader = !!overlay;
+            if (!el) el = document.scrollingElement || document.documentElement;
+            if (!el) return {progress: 0, reader: false};
+            var max = el.scrollHeight - el.clientHeight;
+            var progress = max > 40 ? (el.scrollTop || 0) / max : 0;
+            if (!isFinite(progress) || progress < 0) progress = 0;
+            if (progress > 1) progress = 1;
+            return {progress: progress, reader: reader};
+          } catch (e) {
+            return {progress: 0, reader: false};
+          }
+        })()
+        """;
+
+    private static final String RESTORE_PAGE_JS = """
+        (function(p){
+          try {
+            var el = document.scrollingElement || document.documentElement;
+            if (!el) return false;
+            var max = el.scrollHeight - el.clientHeight;
+            if (max > 0) window.scrollTo(0, max * p);
+            return true;
+          } catch (e) {
+            return false;
+          }
+        })(__PROGRESS__)
+        """;
+
+    static String restorePageScroll(double progress) {
+        return RESTORE_PAGE_JS.replace(
+            "__PROGRESS__",
+            String.valueOf(ReadingProgress.clamp(progress))
+        );
+    }
+
     static String openReader(boolean dark) {
+        return openReader(dark, 0d);
+    }
+
+    /**
+     * Abre el modo lectura. Si progress es mayor que cero, la vista se coloca
+     * en esa proporción del artículo para continuar donde se dejó.
+     */
+    static String openReader(boolean dark, double progress) {
         return OPEN_JS
             .replace("__CSS__", ReaderStyles.overlayCss())
+            .replace("__SCROLL__", String.valueOf(ReadingProgress.clamp(progress)))
             .replace("__DARK__", dark ? "true" : "false");
     }
 
