@@ -114,13 +114,37 @@ comprobado en dispositivo y lo que requiere una Release real publicada.
 | 8 | SHA-256 incorrecto: se rechaza | `UpdateVerifierTest` (CHECKSUM_MISMATCH) | **Aprobado** (automatizado) |
 | 9 | Paquete equivocado o downgrade: se rechaza | `UpdateVerifierTest` | **Aprobado** (automatizado) |
 | 10 | Firma distinta: se rechaza | `UpdateVerifierTest` + `ApkVerifier` | **Aprobado** (lógica automatizada). No se publicó una Release con firma distinta para no distribuir un APK inválido |
-| 11 | Instalador de Android con autorización y app actualizada | Instalación real v1.0.0 → v1.1.0 y v1.0.0 → v1.1.1 | **Aprobado en dispositivo**: instalador del sistema, confirmación y `versionName`/`versionCode` actualizados |
-| 12 | Historial real de versiones y «Más tarde» | `UpdateClient.fetchHistory` + `UpdateStore` | **Aprobado en dispositivo**: historial con 1.1.1 y 1.1.0; «Más tarde» oculta el aviso y sigue oculto tras reiniciar |
+| 11 | Instalador de Android con autorización y app actualizada | Instalación real v1.0.0 → v1.1.0, v1.0.0 → v1.1.1 y v1.1.1 → v1.1.2 | **Aprobado en dispositivo**: instalador del sistema, confirmación y `versionName`/`versionCode` actualizados; en la transición se conservaron la fecha de instalación original y la configuración guardada |
+| 12 | Historial real de versiones y «Más tarde» | `UpdateClient.fetchHistory` + `UpdateStore` | **Aprobado en dispositivo**: historial con 1.1.2, 1.1.1 y 1.1.0; «Más tarde» oculta el aviso y sigue oculto tras reiniciar |
 
 Pruebas unitarias: **43 en verde** (7 clases, incluidas las nuevas
 `UpdateManagerTest`). Las pruebas manuales se ejecutaron en el dispositivo
 `R58RA2CXZGR` (Samsung SM-A125U, Android 12) contra las Releases reales
-`v1.1.0` y `v1.1.1`.
+`v1.1.0`, `v1.1.1` y `v1.1.2`.
+
+### Transición 1.1.1 → 1.1.2 (canal heredado)
+
+El 9 de noviembre de 2026 se actualizó el mismo dispositivo desde la 1.1.1
+instalada hasta la 1.1.2 publicada en el canal heredado
+`R911Y/el-observador-cubano`:
+
+1. **Info → Buscar actualizaciones** mostró «Versión instalada 1.1.1» y
+   «Última versión 1.1.2» con las notas reales de la Release.
+2. Android pidió autorización para instalar apps desconocidas; tras
+   concederla, apareció el instalador del sistema y se confirmó la
+   actualización.
+3. Play Protect mostró el aviso esperado; se continuó con
+   **Más detalles → Instalar sin analizar**.
+4. `dumpsys package` confirmó `versionName=1.1.2` y `versionCode=4`, con
+   `firstInstallTime` intacto y `lastUpdateTime` actualizado. La configuración
+   guardada (por ejemplo, el tamaño de texto al 120 %) se conservó.
+5. La 1.1.2 mostró «Tienes la última versión» y el enlace **Ver en GitHub**
+   abrió `github.com/observador-cubano/el-observador-cubano-android/releases/tag/v1.1.2`,
+   lo que confirma el cambio al repositorio oficial.
+
+El aviso transitorio «No se pudo comprobar si hay una versión nueva» que
+apareció justo después de instalar desapareció al pulsar **Volver a comprobar**;
+no se reprodujo.
 
 ### Google Play Protect
 
