@@ -1,7 +1,7 @@
 # Seguridad — El Observador Cubano
 
-**Estado:** Fase 1. No hay producción, dominio ni datos reales.
-**Última actualización:** 6 de noviembre de 2026
+**Estado:** Fase 1 de la plataforma web (sin producción, dominio ni datos reales). La aplicación Android 1.1.x sí se distribuye de forma firmada.
+**Última actualización:** 9 de noviembre de 2026
 **Marco de referencia:** OWASP ASVS nivel 2, OWASP Top 10 y
 [`docs/08-plan-seguridad.md`](docs/08-plan-seguridad.md).
 
@@ -25,18 +25,15 @@ pendiente aparece en la lista de la sección 7.
 
 ## 2. Comunicar una vulnerabilidad
 
-Todavía **no existe un canal público de seguridad** ni un correo institucional verificado. No se
-inventa una dirección.
-
-Mientras se habilita:
+El canal privado es el **GitHub Security Advisory** del repositorio oficial:
+<https://github.com/observador-cubano/el-observador-cubano-android/security/advisories/new>.
 
 - No publiques detalles explotables, datos de fuentes ni información personal en un issue público.
-- Guarda la evidencia y comunícala por el canal privado que se acordará con el propietario al crear el
-  repositorio y las cuentas de servicio.
-- Este documento se actualizará con la dirección y el procedimiento cuando existan.
+- No envíes contraseñas, códigos 2FA, códigos de recuperación, tokens ni claves privadas.
+- Indica la versión afectada, los pasos para reproducirlo y el impacto que crees que tiene.
 
-No hay programa de recompensas ni promesa de plazo de respuesta mientras el proyecto no esté en
-producción.
+No hay programa de recompensas ni un acuerdo de nivel de servicio. Se acusará recibo y se informará
+de la resolución en la medida de lo posible.
 
 ---
 
@@ -229,3 +226,54 @@ Sin esta opción, la página 404 se quedaba en su armazón de error sin hidratar
 | E2E | 3 pruebas locales con Edge; Chromium no descargable en este equipo por bloqueo del CDN |
 
 Los resultados son de este entorno. No se extrapolan a producción.
+
+---
+
+## 9. Aplicación Android y cadena de distribución
+
+### 9.1 Alcance y versiones mantenidas
+
+| Versión | Soporte |
+|---|---|
+| 1.1.x | Recibe correcciones de seguridad y actualizaciones. |
+| 1.0.x y anteriores | Solo actualizables a la última versión estable. |
+
+La app (`cu.observadorcubano.app`) se distribuye **solo** mediante GitHub Releases del repositorio
+oficial. Cualquier APK obtenido por otra vía no está respaldado por el proyecto.
+
+Fuera del alcance de seguridad de la app: el sitio de Blogger y los servicios de Google, GitHub,
+Android y el firmware del dispositivo, y los ataques que requieran root, depuración USB o acceso
+físico desbloqueado.
+
+### 9.2 Medidas aplicadas
+
+- **Firma de producción** con keystore privada fuera del repositorio; los secretos viven solo en
+  GitHub Actions. Detalles en `ANDROID_SIGNING.md`.
+- **Verificación en cadena** antes de instalar: SHA-256 publicado, paquete, `versionCode`,
+  `versionName` y certificado.
+- **Sin instalación silenciosa**: siempre se requiere confirmación del instalador de Android.
+- **HTTPS obligatorio**: `usesCleartextTraffic="false"` y política de red que bloquea el tráfico en
+  claro.
+- **Sin secretos en el código**: `GITHUB_TOKEN` con permisos mínimos; la keystore se decodifica de
+  forma temporal en el runner y se borra al terminar.
+- **Detección de secretos y rutas personales** en la integración continua.
+- **Protección de la rama principal**, revisión mediante pull request y CI obligatoria.
+- **Correo noreply** en los commits nuevos; el correo personal no se publica.
+
+### 9.3 Limitaciones conocidas
+
+- **No hay anonimato absoluto.** GitHub y Google ven las peticiones de red y el historial de Git es
+  público. Los commits antiguos conservan la identidad con la que se crearon.
+- **Play Protect** puede advertir al instalar un APK fuera de Google Play. Es esperable en apps que se
+  actualizan a sí mismas; no implica que el APK esté comprometido. Verifica siempre el SHA-256.
+- **Un dispositivo comprometido** (root, depuración USB, accesibilidad maliciosa) puede eludir los
+  controles de la aplicación.
+- **Dependencias de terceros**: una vulnerabilidad en Android System WebView, Capacitor o las
+  bibliotecas de Android afecta a la app hasta publicar una versión corregida.
+
+### 9.4 Respuesta a incidentes de distribución
+
+1. Confirmar el alcance y la versión afectada.
+2. Si hay un secreto expuesto, revocarlo y rotarlo de inmediato.
+3. Publicar una versión PATCH con la corrección; nunca reutilizar un `versionCode` ya distribuido.
+4. Documentar el incidente y las medidas adoptadas en las notas de la Release.

@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [master, main]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -17,6 +20,33 @@ env:
   NEXT_PUBLIC_SITE_URL: http://localhost:3000
 
 jobs:
+  secret-scan:
+    name: Detección de secretos
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Buscar credenciales y rutas personales
+        run: |
+          set -euo pipefail
+
+          banned_files=$(git ls-files | grep -E '(^|/)(\.env(\..*)?|keystore\.properties|local\.properties|.*\.(jks|keystore|p12|pfx|pem|key))$' | grep -v '^\.env\.example$' || true)
+          if [ -n "$banned_files" ]; then
+            echo "::error::Archivos sensibles versionados:"
+            echo "$banned_files"
+            exit 1
+          fi
+
+          pattern='-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{35}|[Cc]:\\Users\\[A-Za-z]|/Users/[A-Za-z][^/]*/|/home/[A-Za-z][^/]*/'
+          if git grep -n -I -E -e "$pattern" -- . ; then
+            echo "::error::Posible secreto o ruta personal en el árbol de trabajo."
+            exit 1
+          fi
+
+          echo "Sin secretos ni rutas personales detectados."
+
   quality:
     name: Lint, tipos, pruebas y build
     runs-on: ubuntu-latest

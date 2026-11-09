@@ -4,8 +4,8 @@ Este documento describe cómo se versiona, prueba, firma y publica El Observador
 Cubano. El repositorio oficial es GitHub; la aplicación Android se distribuye
 como APK firmada desde **GitHub Releases**.
 
-> **Repositorio:** https://github.com/R911Y/el-observador-cubano
-> **Descargas:** https://github.com/R911Y/el-observador-cubano/releases
+> **Repositorio:** https://github.com/observador-cubano/el-observador-cubano-android
+> **Descargas:** https://github.com/observador-cubano/el-observador-cubano-android/releases
 
 ## 1. Estructura del repositorio
 
@@ -25,8 +25,7 @@ carpetas de herramientas de agentes.
 
 ## 2. Ramas y commits
 
-- Rama principal: `master` (también se acepta `main` si el repositorio se
-  renombra).
+- Rama principal: `main`.
 - Ramas de trabajo: `feat/descripcion-corta`, `fix/descripcion-corta`,
   `docs/…`, `ci/…`.
 - Cada cambio entra por pull request con CI en verde. No se publica una APK
@@ -67,7 +66,7 @@ git commit -m "chore(release): prepare v1.1.0"
 
 ### CI (`.github/workflows/ci.yml`)
 
-Se ejecuta en `push` y `pull_request` sobre `master`/`main`:
+Se ejecuta en `push` y `pull_request` sobre `main`:
 
 1. Comprueba que `versionName` coincide con `package.json`.
 2. Instala dependencias, ejecuta TypeScript y Vite.
@@ -102,18 +101,19 @@ Se configuran una sola vez en **Settings → Secrets and variables → Actions**
 | `ANDROID_KEY_ALIAS` | Alias de la clave de firma. |
 | `ANDROID_KEY_PASSWORD` | Contraseña de la clave. |
 
-La keystore de este proyecto vive fuera del repositorio, en
-`C:\Users\Ronny\.observadorcubano\`. **No se copia al repositorio ni se sube
-como archivo normal.** Para cargarla como secreto sin imprimir su contenido:
+La keystore de este proyecto vive fuera del repositorio, en una carpeta privada
+del equipo de firma (por ejemplo `%USERPROFILE%\.observadorcubano\`). **No se
+copia al repositorio ni se sube como archivo normal.** Para cargarla como
+secreto sin imprimir su contenido:
 
 ```powershell
-$bytes = [IO.File]::ReadAllBytes("C:\Users\Ronny\.observadorcubano\NOMBRE.jks")
+$bytes = [IO.File]::ReadAllBytes("$env:USERPROFILE\.observadorcubano\NOMBRE.jks")
 $b64 = [Convert]::ToBase64String($bytes)
-$b64 | gh secret set ANDROID_KEYSTORE_BASE64 --repo R911Y/el-observador-cubano
+$b64 | gh secret set ANDROID_KEYSTORE_BASE64 --repo observador-cubano/el-observador-cubano-android
 Remove-Variable bytes, b64
 ```
 
-Los demás secretos se escriben con `gh secret set NOMBRE --repo R911Y/el-observador-cubano`
+Los demás secretos se escriben con `gh secret set NOMBRE --repo observador-cubano/el-observador-cubano-android`
 (la terminal los pide de forma interactiva). Nunca se envían por chat ni se
 incluyen en la APK.
 
@@ -141,7 +141,7 @@ npm run version:bump minor
 cd ..
 git add -A
 git commit -m "chore(release): prepare v1.2.0"
-git push origin master
+git push origin main
 
 # 4. Crear la etiqueta y disparar el flujo de release
 git tag v1.2.0
@@ -154,8 +154,8 @@ El flujo tarda varios minutos. Al terminar, en **Releases** debe existir
 ## 7. Verificar una Release
 
 ```powershell
-gh release view v1.2.0 --repo R911Y/el-observador-cubano
-gh release download v1.2.0 --repo R911Y/el-observador-cubano
+gh release view v1.2.0 --repo observador-cubano/el-observador-cubano-android
+gh release download v1.2.0 --repo observador-cubano/el-observador-cubano-android
 Get-FileHash .\ElObservadorCubano-v1.2.0.apk -Algorithm SHA256
 Get-Content .\ElObservadorCubano-v1.2.0.apk.sha256
 ```
@@ -179,7 +179,7 @@ además valida paquete, versión y firma.
 
 ## 9. Protecciones recomendadas del repositorio
 
-- Proteger `master`: PR obligatorio, CI en verde y sin force-push.
+- Proteger `main`: PR obligatorio, CI en verde y sin force-push.
 - Activar **Dependabot alerts** y actualizaciones de seguridad.
 - Mantener los secretos solo en GitHub Actions, nunca en archivos.
 - Revisar cada Release antes de anunciarla.

@@ -6,7 +6,7 @@
 
 | Elemento | Estado observado |
 |---|---|
-| Directorio del proyecto | `C:\Users\Ronny\Documents\GitHub\El Observador Cubano` — **vacío** |
+| Directorio del proyecto | `<directorio-del-proyecto>` — **vacío** |
 | Repositorio Git | **No inicializado**; `git` no está instalado o no está en `PATH` |
 | Node.js | v24.21.0 disponible |
 | npm | 11.19.0 disponible |

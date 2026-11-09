@@ -1,7 +1,7 @@
 # Sistema de actualizaciones in-app
 
 La aplicación comprueba las **Releases estables** publicadas en el repositorio
-público de GitHub (`R911Y/el-observador-cubano`) y ofrece la instalación del APK
+público de GitHub (`observador-cubano/el-observador-cubano-android`) y ofrece la instalación del APK
 verificado. No usa tokens, no instala en silencio y no permite versiones anteriores.
 
 ## 1. Componentes
@@ -25,7 +25,7 @@ verificado. No usa tokens, no instala en silencio y no permite versiones anterio
 Inicio / volver a la app / cada 6 h en primer plano
         │
         ▼
-GET /repos/R911Y/el-observador-cubano/releases/latest   (anónimo, TLS)
+GET /repos/observador-cubano/el-observador-cubano-android/releases/latest   (anónimo, TLS)
         │
         ├── sin red o error → se conserva la última Release conocida
         │                     y se reintenta en 15 min

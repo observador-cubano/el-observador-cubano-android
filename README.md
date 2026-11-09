@@ -14,11 +14,11 @@ con verificación editorial, privacidad por defecto y protección de fuentes.
 ## Aplicación Android
 
 La app oficial (`cu.observadorcubano.app`) vive en [`mobile/`](mobile/) y se
-compila sin Android Studio con Gradle. La versión actual es **1.1.1**
-(`versionCode 3`).
+compila sin Android Studio con Gradle. La versión actual es **1.1.2**
+(`versionCode 4`).
 
-- **Repositorio oficial:** https://github.com/R911Y/el-observador-cubano
-- **Descargas firmadas:** https://github.com/R911Y/el-observador-cubano/releases
+- **Repositorio oficial:** https://github.com/observador-cubano/el-observador-cubano-android
+- **Descargas firmadas:** https://github.com/observador-cubano/el-observador-cubano-android/releases
 - Interfaz nativa + WebView del periódico, búsqueda, secciones, Info y
   adaptación a orientación vertical/apaisada.
 - Actualizaciones in-app desde GitHub Releases: SHA-256, paquete, versión y
