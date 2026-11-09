@@ -174,6 +174,7 @@ public class MainActivity extends AppCompatActivity {
     private View navHome;
     private View navSections;
     private View navSearch;
+    private View navChannel;
     private View navInfo;
 
     private ConnectivityManager connectivityManager;
@@ -275,6 +276,7 @@ public class MainActivity extends AppCompatActivity {
         navHome = findViewById(R.id.navHome);
         navSections = findViewById(R.id.navSections);
         navSearch = findViewById(R.id.navSearch);
+        navChannel = findViewById(R.id.navChannel);
         navInfo = findViewById(R.id.navInfo);
     }
 
@@ -462,6 +464,7 @@ public class MainActivity extends AppCompatActivity {
         navHome.setOnClickListener(v -> loadHome(false));
         navSections.setOnClickListener(v -> showSections());
         navSearch.setOnClickListener(v -> showSearch());
+        navChannel.setOnClickListener(v -> openChannel());
         navInfo.setOnClickListener(v -> openInfo());
         bannerRetry.setOnClickListener(v -> refresh());
         findViewById(R.id.updateBannerAction).setOnClickListener(v -> openUpdates());
@@ -747,6 +750,11 @@ public class MainActivity extends AppCompatActivity {
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
     }
 
+    private void openChannel() {
+        startActivity(new Intent(this, ChannelActivity.class));
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+    }
+
     private void shareCurrentPage() {
         String safeUrl = UrlPolicy.normalize(webView.getUrl());
         if (safeUrl == null) {
@@ -920,6 +928,7 @@ public class MainActivity extends AppCompatActivity {
         navHome.setSelected(onHome);
         navSections.setSelected(onLabel);
         navSearch.setSelected(onSearch);
+        navChannel.setSelected(false);
         navInfo.setSelected(false);
     }
 

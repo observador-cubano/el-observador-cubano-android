@@ -14,13 +14,16 @@ con verificación editorial, privacidad por defecto y protección de fuentes.
 ## Aplicación Android
 
 La app oficial (`cu.observadorcubano.app`) vive en [`mobile/`](mobile/) y se
-compila sin Android Studio con Gradle. La versión actual es **1.1.2**
-(`versionCode 4`).
+compila sin Android Studio con Gradle. La versión actual es **1.2.0**
+(`versionCode 5`).
 
 - **Repositorio oficial:** https://github.com/observador-cubano/el-observador-cubano-android
 - **Descargas firmadas:** https://github.com/observador-cubano/el-observador-cubano-android/releases
 - Interfaz nativa + WebView del periódico, búsqueda, secciones, Info y
   adaptación a orientación vertical/apaisada.
+- Sección **«Desde nuestro canal»** con feed JSON propio para las publicaciones
+  del canal oficial de WhatsApp, sin scraping ni tokens en el APK. Ver
+  [`WHATSAPP_CHANNEL.md`](WHATSAPP_CHANNEL.md).
 - Actualizaciones in-app desde GitHub Releases: SHA-256, paquete, versión y
   firma verificados antes de abrir el instalador de Android.
 - CI y publicación firmada con GitHub Actions; instrucciones completas en
@@ -146,6 +149,7 @@ src/
 
 prisma/                  # esquema y migraciones
 tests/                   # unitarias y E2E
+data/channel/            # publicaciones y feed JSON del canal de WhatsApp
 docs/                    # investigación, planes e informes
 ```
 
@@ -164,6 +168,7 @@ La separación por módulos de dominio (`modules/articles`, `modules/users`, etc
 | [`docs/00-informe-fase-0.md`](docs/00-informe-fase-0.md) | Resumen ejecutivo de la investigación |
 | [`docs/01-analisis-blogspot.md`](docs/01-analisis-blogspot.md) | Análisis del sitio actual |
 | [`docs/02-analisis-whatsapp.md`](docs/02-analisis-whatsapp.md) | Canal de WhatsApp |
+| [`WHATSAPP_CHANNEL.md`](WHATSAPP_CHANNEL.md) | Feed propio, administración y límites del canal |
 | [`docs/03-inventario-contenidos.md`](docs/03-inventario-contenidos.md) | 34 entradas y 14 páginas |
 | [`docs/04-arquitectura-tecnica.md`](docs/04-arquitectura-tecnica.md) | Arquitectura propuesta |
 | [`docs/05-modelo-datos.md`](docs/05-modelo-datos.md) | Modelo de datos |
@@ -193,7 +198,7 @@ Datos tabulares en [`docs/data/inventario-contenidos.csv`](docs/data/inventario-
 
 ## Limitaciones actuales
 
-1. No hay repositorio remoto: falta el token de GitHub o `gh auth login`.
+1. El feed de «Desde nuestro canal» está vacío hasta registrar publicaciones reales con el CLI.
 2. No hay PostgreSQL local ni remoto; la migración no se ha aplicado.
 3. No hay pantallas de login, MFA ni administración de usuarios.
 4. No hay despliegue ni dominio de prueba.
