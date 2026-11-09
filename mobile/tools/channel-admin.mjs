@@ -71,6 +71,21 @@ const TYPE_LABELS = {
   comunicado: 'Comunicado',
 };
 
+/**
+ * Acepta el número, el identificador o la etiqueta del tipo. Al editar, el
+ * valor por defecto llega como «link (Enlace)» y debe conservar el tipo.
+ */
+function parsePostType(answer, fallback = 'text') {
+  const value = String(answer ?? '').trim().toLowerCase();
+  if (TYPES.has(value)) return TYPES.get(value);
+  for (const [key, label] of Object.entries(TYPE_LABELS)) {
+    if (value === key || value === label.toLowerCase() || value.startsWith(`${key} `)) {
+      return key;
+    }
+  }
+  return fallback;
+}
+
 function questioner() {
   const rl = createInterface({ input, output });
   return {
@@ -173,7 +188,7 @@ async function promptPost(base = {}) {
       'Tipo: 1 texto, 2 imagen, 3 vídeo, 4 enlace, 5 comunicado',
       typeLabel,
     );
-    const type = TYPES.get(typeAnswer) ?? (TYPE_LABELS[typeAnswer] ? typeAnswer : 'text');
+    const type = parsePostType(typeAnswer, base.type ?? 'text');
 
     const text = await ui.ask(
       'Texto (usa \\n para saltos de línea)',
@@ -221,7 +236,7 @@ async function promptPost(base = {}) {
       image: imageUrl
         ? {
             url: imageUrl,
-            alt: base.image?.alt ?? title ?? 'Imagen de la publicación',
+            alt: base.image?.alt || title || 'Imagen de la publicación',
           }
         : undefined,
       video: videoUrl
