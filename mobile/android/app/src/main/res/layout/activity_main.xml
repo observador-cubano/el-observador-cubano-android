@@ -269,6 +269,20 @@
                 </LinearLayout>
 
                 <LinearLayout
+                    android:id="@+id/navChannel"
+                    style="@style/Widget.EOC.NavItem">
+
+                    <ImageView
+                        style="@style/Widget.EOC.NavIcon"
+                        android:contentDescription="@string/cd_channel"
+                        android:src="@drawable/ic_channel" />
+
+                    <TextView
+                        style="@style/Widget.EOC.NavLabel"
+                        android:text="@string/nav_channel" />
+                </LinearLayout>
+
+                <LinearLayout
                     android:id="@+id/navInfo"
                     style="@style/Widget.EOC.NavItem">
 

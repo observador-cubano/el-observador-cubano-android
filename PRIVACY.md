@@ -25,6 +25,7 @@ preferencias y datos técnicos en el almacenamiento privado de la app:
 | Sección y última visita | Restaurar la navegación | `SharedPreferences` |
 | Última comprobación de versión, última Release conocida, aviso ya mostrado y «Más tarde» | Evitar consultas y avisos repetidos | `SharedPreferences` |
 | Caché de la WebView | Cargar el sitio con menos datos | Almacenamiento interno de Android |
+| Índice y páginas del canal, última visita y publicaciones vistas | Mostrar «Desde nuestro canal» sin conexión y marcar novedades | `Preferences` (almacenamiento privado) |
 
 Estos datos permanecen en el dispositivo, no se envían al proyecto y se borran al
 desinstalar la aplicación o al limpiar sus datos desde Android. La app tiene
@@ -41,12 +42,20 @@ La aplicación solo se conecta a:
 2. **`api.github.com`** para comprobar si hay una versión nueva. La consulta es
    anónima: no incluye cuenta, token, identificador del dispositivo ni datos
    personales. GitHub recibe la IP y el agente de usuario de la petición.
-3. **`github.com`** solo si el usuario decide descargar un APK o abrir una
+3. **`raw.githubusercontent.com`** y, como respaldo, **`cdn.jsdelivr.net`** para
+   descargar el feed JSON de «Desde nuestro canal». Son peticiones anónimas de
+   solo lectura; no incluyen cuenta, token ni identificador del dispositivo.
+   GitHub y jsDelivr reciben la IP y el agente de usuario.
+4. **`github.com`** solo si el usuario decide descargar un APK o abrir una
    Release en el navegador.
+5. **`whatsapp.com`** solo si el usuario pulsa «Seguir el canal» o «Ver
+   publicación original». La app no usa el SDK de WhatsApp, no lee mensajes ni
+   accede a la cuenta del usuario.
 
 La aplicación **no** usa analítica propia, publicidad, rastreadores, servicios de
-mensajería ni un servidor del proyecto. No hay notificaciones push: las
-notificaciones de actualización se generan localmente en el dispositivo.
+mensajería integrados ni un servidor del proyecto. No hay notificaciones push:
+las notificaciones de actualización y las marcas «Nuevo»/«Actualizado» se generan
+localmente en el dispositivo.
 
 ## 4. Cookies
 
