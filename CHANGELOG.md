@@ -4,6 +4,37 @@ Todas las versiones distribuidas de la aplicación Android usan
 `MAJOR.MINOR.PATCH` y se publican como GitHub Releases con etiqueta `vX.Y.Z`.
 El historial visible dentro de la app se lee directamente de esas Releases.
 
+## [1.2.0] - 2026-11-09
+
+### Añadido
+
+- Sección **«Desde nuestro canal»** en la barra inferior, con pantalla propia
+  Capacitor y la misma identidad visual del periódico.
+- Feed JSON versionado en `data/channel/` para las publicaciones del canal
+  oficial de WhatsApp, sin scraping ni tokens en el APK.
+- Tarjetas de texto, imagen, vídeo, enlace y comunicado, con filtros,
+  paginación bajo demanda y enlaces externos por Intent HTTPS.
+- Caché local del índice y las páginas, con aviso de copia guardada cuando no
+  hay conexión.
+- Marcas «Nuevo» y «Actualizado» calculadas en el dispositivo, sin simular push.
+- Unificación con artículos de Blogger por URL, título y similitud de contenido,
+  con revisión manual para coincidencias medias.
+- CLI `channel-admin` para listar, añadir, editar, eliminar, construir, revisar,
+  validar y publicar el feed mediante pull request.
+- 10 pruebas del feed y validación del JSON en CI.
+
+### Cambiado
+
+- `versionName` pasa de `1.1.2` a `1.2.0`; `versionCode` pasa de `4` a `5`.
+- El feed puede actualizarse sin publicar una nueva versión de la aplicación.
+
+### Limitaciones
+
+- WhatsApp no ofrece una API pública de lectura de canales; las publicaciones se
+  registran manualmente con el CLI.
+- El feed está vacío hasta que el equipo registre contenido real.
+- No hay notificaciones push: solo marcas locales de novedad.
+
 ## [1.1.0] - 2026-11-07
 
 ### Añadido
