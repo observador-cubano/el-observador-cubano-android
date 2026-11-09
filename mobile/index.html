@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
-    <meta name="color-scheme" content="light" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#0567ee" />
     <title>El Observador Cubano</title>
   </head>
@@ -120,9 +120,74 @@
             </p>
           </div>
 
+          <fieldset class="field">
+            <legend class="field__label">Apariencia</legend>
+            <p class="field__help">
+              Elige cómo se muestran el periódico, los artículos guardados y estas pantallas.
+            </p>
+            <div class="choices" role="radiogroup" aria-label="Tema de la aplicación">
+              <label class="choice">
+                <input type="radio" name="darkMode" value="system" />
+                <span class="choice__body">
+                  <span class="choice__title">Según el sistema</span>
+                  <span class="choice__desc">Cambia automáticamente con el modo oscuro del teléfono.</span>
+                </span>
+              </label>
+              <label class="choice">
+                <input type="radio" name="darkMode" value="light" />
+                <span class="choice__body">
+                  <span class="choice__title">Claro</span>
+                  <span class="choice__desc">Fondo claro y texto oscuro, también de noche.</span>
+                </span>
+              </label>
+              <label class="choice">
+                <input type="radio" name="darkMode" value="dark" />
+                <span class="choice__body">
+                  <span class="choice__title">Oscuro</span>
+                  <span class="choice__desc">Fondo oscuro y texto claro para leer con poca luz.</span>
+                </span>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="field">
+            <legend class="field__label">Ahorro de datos</legend>
+            <p class="field__help">
+              Útil cuando navegas con datos móviles y quieres cuidar el consumo.
+            </p>
+            <label class="choice">
+              <input id="data-saver" type="checkbox" />
+              <span class="choice__body">
+                <span class="choice__title">No cargar imágenes con datos móviles</span>
+                <span class="choice__desc">
+                  El texto y la navegación siguen funcionando; las imágenes se omiten solo en la
+                  red móvil y se cargan normalmente con Wi-Fi.
+                </span>
+              </span>
+            </label>
+          </fieldset>
+
           <button id="btn-reset" class="btn btn--ghost" type="button">
             Restablecer configuración
           </button>
+        </section>
+
+        <section class="card" aria-labelledby="saved-title">
+          <h2 id="saved-title" class="card__title">Lectura sin conexión</h2>
+          <p class="card__text">
+            Desde un artículo puedes activar el <strong>modo lectura</strong> para verlo sin
+            distracciones y guardarlo con el botón de marcador. El artículo y sus imágenes quedan
+            en este dispositivo para leerlos aunque no tengas Internet.
+          </p>
+          <div class="btn-row">
+            <button id="btn-open-saved" class="btn btn--primary" type="button">
+              Ver artículos guardados
+            </button>
+          </div>
+          <p class="field__help">
+            Los guardados se almacenan solo en este teléfono y puedes eliminarlos en cualquier
+            momento.
+          </p>
         </section>
 
         <section class="card" aria-labelledby="updates-title">

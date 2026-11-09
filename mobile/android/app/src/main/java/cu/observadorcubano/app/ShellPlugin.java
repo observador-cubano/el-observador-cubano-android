@@ -38,4 +38,31 @@ public class ShellPlugin extends Plugin {
             });
         }
     }
+
+    /** Abre la pantalla nativa de artículos guardados. */
+    @PluginMethod
+    public void openSaved(PluginCall call) {
+        Activity activity = getActivity();
+        call.resolve();
+        if (activity != null) {
+            activity.runOnUiThread(() -> {
+                Intent intent = new Intent(activity, SavedArticlesActivity.class);
+                activity.startActivity(intent);
+            });
+        }
+    }
+
+    /**
+     * Aplica el modo claro/oscuro guardado en las preferencias. Cambiar el
+     * modo por defecto hace que las actividades existentes se vuelvan a crear
+     * con los recursos nocturnos correctos.
+     */
+    @PluginMethod
+    public void applyTheme(PluginCall call) {
+        Activity activity = getActivity();
+        call.resolve();
+        if (activity != null) {
+            activity.runOnUiThread(() -> AppPrefs.applyNightMode(activity));
+        }
+    }
 }

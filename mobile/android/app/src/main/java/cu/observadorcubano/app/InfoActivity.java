@@ -35,13 +35,19 @@ public class InfoActivity extends BridgeActivity {
         });
 
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        boolean dark = AppPrefs.isDarkMode(this);
+        if (android.os.Build.VERSION.SDK_INT < 35) {
+            getWindow().setNavigationBarColor(
+                androidx.core.content.ContextCompat.getColor(this, R.color.surface)
+            );
+        }
         WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(
             getWindow(),
             getWindow().getDecorView()
         );
         if (controller != null) {
             controller.setAppearanceLightStatusBars(false);
-            controller.setAppearanceLightNavigationBars(true);
+            controller.setAppearanceLightNavigationBars(!dark);
         }
 
         // La página se dibuja de borde a borde; el contenido respeta la barra
