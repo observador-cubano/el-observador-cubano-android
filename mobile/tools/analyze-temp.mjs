@@ -1,7 +1,7 @@
 import sharp from 'sharp';
 import path from 'node:path';
 
-const base = 'C:/Users/Ronny/Downloads/Telegram Desktop';
+const base = process.env.EOC_ASSETS_DIR || path.resolve('assets-fuente');
 
 async function analyze(file, label) {
   const { data, info } = await sharp(path.join(base, file))
