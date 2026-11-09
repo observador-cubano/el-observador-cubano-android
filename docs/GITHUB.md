@@ -25,8 +25,7 @@ carpetas de herramientas de agentes.
 
 ## 2. Ramas y commits
 
-- Rama principal: `master` (también se acepta `main` si el repositorio se
-  renombra).
+- Rama principal: `main`.
 - Ramas de trabajo: `feat/descripcion-corta`, `fix/descripcion-corta`,
   `docs/…`, `ci/…`.
 - Cada cambio entra por pull request con CI en verde. No se publica una APK
@@ -67,7 +66,7 @@ git commit -m "chore(release): prepare v1.1.0"
 
 ### CI (`.github/workflows/ci.yml`)
 
-Se ejecuta en `push` y `pull_request` sobre `master`/`main`:
+Se ejecuta en `push` y `pull_request` sobre `main`:
 
 1. Comprueba que `versionName` coincide con `package.json`.
 2. Instala dependencias, ejecuta TypeScript y Vite.
@@ -142,7 +141,7 @@ npm run version:bump minor
 cd ..
 git add -A
 git commit -m "chore(release): prepare v1.2.0"
-git push origin master
+git push origin main
 
 # 4. Crear la etiqueta y disparar el flujo de release
 git tag v1.2.0
@@ -180,7 +179,7 @@ además valida paquete, versión y firma.
 
 ## 9. Protecciones recomendadas del repositorio
 
-- Proteger `master`: PR obligatorio, CI en verde y sin force-push.
+- Proteger `main`: PR obligatorio, CI en verde y sin force-push.
 - Activar **Dependabot alerts** y actualizaciones de seguridad.
 - Mantener los secretos solo en GitHub Actions, nunca en archivos.
 - Revisar cada Release antes de anunciarla.
