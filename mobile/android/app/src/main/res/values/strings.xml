@@ -66,6 +66,64 @@
     <string name="cd_sections">Abrir secciones</string>
     <string name="cd_search">Buscar en el periódico</string>
     <string name="cd_close">Cerrar</string>
+    <string name="cd_reader">Abrir modo lectura</string>
+    <string name="cd_saved">Abrir artículos guardados</string>
+    <string name="cd_saved_delete">Eliminar artículo guardado</string>
+    <string name="cd_saved_share">Compartir artículo guardado</string>
+    <string name="cd_saved_back">Volver a guardados</string>
+
+    <!-- Modo lectura -->
+    <string name="reader_unavailable">Abre un artículo para usar el modo lectura.</string>
+    <string name="reader_on">Modo lectura activado</string>
+    <string name="reader_off">Modo lectura desactivado</string>
+    <string name="reader_failed">No se pudo abrir el modo lectura.</string>
+    <string name="reader_kicker">El Observador Cubano</string>
+    <string name="reader_close">Cerrar modo lectura</string>
+    <string name="reader_label">Modo lectura</string>
+
+    <!-- Guardados sin conexión -->
+    <string name="saved_sheet_title">Guardados sin conexión</string>
+    <string name="saved_sheet_subtitle">Lee tus artículos aunque no tengas Internet.</string>
+    <string name="saved_save_title">Guardar este artículo</string>
+    <string name="saved_save_sub">Se descargará en este dispositivo para leerlo sin conexión.</string>
+    <string name="saved_update_title">Actualizar guardado</string>
+    <string name="saved_update_sub">Se volverá a descargar la versión actual del artículo.</string>
+    <string name="saved_remove_title">Quitar de guardados</string>
+    <string name="saved_remove_sub">El artículo se eliminará de este dispositivo.</string>
+    <string name="saved_view_title">Ver artículos guardados</string>
+    <string name="saved_none_hint">Abre un artículo y toca el marcador para guardarlo.</string>
+    <string name="saved_saving">Guardando el artículo para leerlo sin conexión…</string>
+    <string name="saved_saved">Artículo guardado para leer sin conexión.</string>
+    <string name="saved_removed">Artículo eliminado de guardados.</string>
+    <string name="saved_failed">No se pudo guardar el artículo. Inténtalo de nuevo.</string>
+    <string name="saved_not_article">Esta página no parece un artículo.</string>
+    <string name="saved_updated">Guardado actualizado.</string>
+    <string name="saved_activity_title">Guardados</string>
+    <string name="saved_activity_subtitle">Artículos disponibles sin conexión</string>
+    <string name="saved_pill">Guardados</string>
+    <string name="saved_offline_pill">Sin conexión</string>
+    <string name="saved_open_online">Abrir en línea</string>
+    <string name="saved_row_date">Guardado el %1$s</string>
+    <string name="saved_empty_title">Aún no hay artículos guardados</string>
+    <string name="saved_empty_message">Cuando guardes un artículo, podrás leerlo aquí aunque no tengas Internet.</string>
+    <string name="saved_empty_action">Volver al periódico</string>
+    <string name="saved_delete_title">Eliminar guardado</string>
+    <string name="saved_delete_message">«%1$s» se eliminará de este dispositivo. Esta acción no se puede deshacer.</string>
+    <string name="saved_delete_confirm">Eliminar</string>
+    <string name="saved_delete_cancel">Cancelar</string>
+    <string name="saved_missing">No se encontró el artículo guardado.</string>
+    <string name="saved_read_error">No se pudo abrir el artículo guardado.</string>
+    <string name="saved_footer">Guardado el %1$s · Fuente: %2$s</string>
+    <string name="saved_byline">Guardado para leer sin conexión</string>
+
+    <plurals name="saved_count">
+        <item quantity="one">%d artículo guardado</item>
+        <item quantity="other">%d artículos guardados</item>
+    </plurals>
+
+    <!-- Ahorro de datos -->
+    <string name="data_saver_banner_text">Ahorro de datos: las imágenes no se cargan con datos móviles.</string>
+    <string name="data_saver_banner_action">Ajustes</string>
 
     <!-- Actualizaciones -->
     <string name="update_channel_name">Actualizaciones de la app</string>

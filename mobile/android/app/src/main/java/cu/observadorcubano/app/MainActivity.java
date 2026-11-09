@@ -23,6 +23,7 @@ import android.os.Message;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.util.Base64;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -57,6 +58,7 @@ import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
 import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -73,6 +75,7 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -82,6 +85,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -95,12 +99,16 @@ public class MainActivity extends AppCompatActivity {
     private static final String HOME_URL = "https://observadorcubano.blogspot.com/";
     private static final String FEED_URL =
         HOME_URL + "feeds/posts/default?alt=json&max-results=150";
-    private static final String EXTRA_ARTICLE_URL = "article_url";
+    public static final String EXTRA_ARTICLE_URL = "article_url";
     private static final long EXIT_WINDOW_MS = 2000L;
     private static final long POPUP_TIMEOUT_MS = 8000L;
     private static final long SPLASH_FALLBACK_MS = 12000L;
     private static final long UPDATE_FIRST_CHECK_DELAY_MS = 1800L;
     private static final int REQUEST_NOTIFICATIONS = 4301;
+    private static final byte[] TRANSPARENT_PNG = Base64.decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+        Base64.DEFAULT
+    );
 
     private static final String SECTIONS_PREFS = "eoc_sections_cache";
     private static final String KEY_SECTIONS = "sections";
@@ -175,6 +183,10 @@ public class MainActivity extends AppCompatActivity {
     private View navSections;
     private View navSearch;
     private View navInfo;
+    private ImageButton readerButton;
+    private ImageButton savedButton;
+    private LinearLayout dataSaverBanner;
+    private Button dataSaverSettings;
 
     private ConnectivityManager connectivityManager;
     private ConnectivityManager.NetworkCallback networkCallback;
@@ -185,7 +197,19 @@ public class MainActivity extends AppCompatActivity {
 
     private Dialog sectionsDialog;
     private Dialog searchDialog;
+    private Dialog savedDialog;
+    private Dialog savingDialog;
     private boolean sectionsFetchInFlight = false;
+
+    private SavedArticlesStore savedStore;
+    private boolean pageIsArticle = false;
+    private boolean readerModeActive = false;
+    private boolean savingArticle = false;
+    private volatile boolean dataSaverBlocking = false;
+    private boolean cellularNetwork = false;
+    private int pageInfoRequest = 0;
+    private String currentArticleUrl = "";
+    private String currentArticleTitle = "";
 
     private boolean isOnline = true;
     private boolean contentVisible = false;
@@ -214,6 +238,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         ioExecutor = Executors.newSingleThreadExecutor();
+        savedStore = new SavedArticlesStore(this);
 
         bindViews();
         observeSplashFirstFrame();
@@ -233,7 +258,10 @@ public class MainActivity extends AppCompatActivity {
 
         connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         isOnline = checkOnline();
+        cellularNetwork = checkCellular();
         updateOfflineUi();
+        updateDataSaverUi();
+        updateArticleActions();
 
         root.postDelayed(splashFallback, SPLASH_FALLBACK_MS);
 
@@ -276,6 +304,10 @@ public class MainActivity extends AppCompatActivity {
         navSections = findViewById(R.id.navSections);
         navSearch = findViewById(R.id.navSearch);
         navInfo = findViewById(R.id.navInfo);
+        readerButton = findViewById(R.id.btnReader);
+        savedButton = findViewById(R.id.btnSaved);
+        dataSaverBanner = findViewById(R.id.dataSaverBanner);
+        dataSaverSettings = findViewById(R.id.dataSaverSettings);
     }
 
     private void configureSystemBars() {
@@ -308,12 +340,13 @@ public class MainActivity extends AppCompatActivity {
         Window window,
         WindowInsetsControllerCompat controller
     ) {
+        boolean dark = AppPrefs.isDarkMode(this);
         if (Build.VERSION.SDK_INT < 35) {
-            window.setNavigationBarColor(Color.WHITE);
+            window.setNavigationBarColor(ContextCompat.getColor(this, R.color.surface));
         }
         if (controller != null) {
             controller.setAppearanceLightStatusBars(false);
-            controller.setAppearanceLightNavigationBars(true);
+            controller.setAppearanceLightNavigationBars(!dark);
         }
     }
 
@@ -332,6 +365,12 @@ public class MainActivity extends AppCompatActivity {
                 dp(7)
             );
             updateBanner.setPadding(
+                bars.left + dp(16),
+                dp(6),
+                bars.right + dp(4),
+                dp(6)
+            );
+            dataSaverBanner.setPadding(
                 bars.left + dp(16),
                 dp(6),
                 bars.right + dp(4),
@@ -393,6 +432,7 @@ public class MainActivity extends AppCompatActivity {
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         applyResponsiveLayout();
+        applyPreferences();
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -421,7 +461,7 @@ public class MainActivity extends AppCompatActivity {
             settings.setAlgorithmicDarkeningAllowed(false);
         }
 
-        webView.setBackgroundColor(Color.WHITE);
+        webView.setBackgroundColor(ContextCompat.getColor(this, R.color.surface));
         webView.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
         webView.getSettings().setTextZoom(AppPrefs.getTextZoom(this));
         webView.setWebViewClient(new EocWebViewClient());
@@ -447,7 +487,9 @@ public class MainActivity extends AppCompatActivity {
             ContextCompat.getColor(this, R.color.brand_blue_dark),
             ContextCompat.getColor(this, R.color.brand_blue)
         );
-        swipeRefresh.setProgressBackgroundColorSchemeColor(Color.WHITE);
+        swipeRefresh.setProgressBackgroundColorSchemeColor(
+            ContextCompat.getColor(this, R.color.surface)
+        );
         swipeRefresh.setDistanceToTriggerSync(dp(76));
         swipeRefresh.setOnChildScrollUpCallback(
             (parent, child) -> webView != null && webView.getScrollY() > 0
@@ -458,6 +500,9 @@ public class MainActivity extends AppCompatActivity {
     private void configureActions() {
         navBack.setOnClickListener(v -> goBackFromUi());
         shareButton.setOnClickListener(v -> shareCurrentPage());
+        readerButton.setOnClickListener(v -> toggleReaderMode());
+        savedButton.setOnClickListener(v -> showSavedSheet());
+        dataSaverSettings.setOnClickListener(v -> openInfo());
         findViewById(R.id.logoWordmark).setOnClickListener(v -> loadHome(false));
         navHome.setOnClickListener(v -> loadHome(false));
         navSections.setOnClickListener(v -> showSections());
@@ -480,6 +525,14 @@ public class MainActivity extends AppCompatActivity {
             public void handleOnBackPressed() {
                 if (fullscreenView != null) {
                     hideCustomView();
+                    return;
+                }
+                if (readerModeActive) {
+                    setReaderMode(false);
+                    return;
+                }
+                if (savedDialog != null && savedDialog.isShowing()) {
+                    savedDialog.dismiss();
                     return;
                 }
                 if (sectionsDialog != null && sectionsDialog.isShowing()) {
@@ -516,12 +569,18 @@ public class MainActivity extends AppCompatActivity {
         networkCallback = new ConnectivityManager.NetworkCallback() {
             @Override
             public void onAvailable(@NonNull Network network) {
-                runOnUiThread(() -> setOnline(true));
+                runOnUiThread(() -> {
+                    setOnline(true);
+                    refreshDataSaverState();
+                });
             }
 
             @Override
             public void onLost(@NonNull Network network) {
-                runOnUiThread(() -> setOnline(checkOnline()));
+                runOnUiThread(() -> {
+                    setOnline(checkOnline());
+                    refreshDataSaverState();
+                });
             }
 
             @Override
@@ -530,7 +589,10 @@ public class MainActivity extends AppCompatActivity {
                 @NonNull NetworkCapabilities capabilities
             ) {
                 boolean online = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
-                runOnUiThread(() -> setOnline(online));
+                runOnUiThread(() -> {
+                    setOnline(online);
+                    refreshDataSaverState();
+                });
             }
         };
 
@@ -555,12 +617,55 @@ public class MainActivity extends AppCompatActivity {
             && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
     }
 
+    private boolean checkCellular() {
+        ConnectivityManager manager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (manager == null) {
+            return false;
+        }
+        Network network = manager.getActiveNetwork();
+        if (network == null) {
+            return false;
+        }
+        NetworkCapabilities capabilities = manager.getNetworkCapabilities(network);
+        return capabilities != null
+            && capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR);
+    }
+
+    private boolean isImageRequest(WebResourceRequest request) {
+        String accept = request.getRequestHeaders().get("Accept");
+        if (accept != null && accept.toLowerCase(Locale.ROOT).contains("image")) {
+            return true;
+        }
+        String destination = request.getRequestHeaders().get("Sec-Fetch-Dest");
+        if ("image".equalsIgnoreCase(destination)) {
+            return true;
+        }
+        String path = request.getUrl().getPath();
+        return path != null && path.toLowerCase(Locale.ROOT).matches(
+            ".*\\.(png|jpe?g|gif|webp|bmp|avif|svg)$"
+        );
+    }
+
+    private void refreshDataSaverState() {
+        cellularNetwork = checkCellular();
+        updateDataSaverUi();
+    }
+
+    private void updateDataSaverUi() {
+        boolean enabled = AppPrefs.isDataSaverEnabled(this);
+        dataSaverBlocking = enabled && cellularNetwork;
+        boolean show = dataSaverBlocking && isOnline && contentVisible;
+        dataSaverBanner.setVisibility(show ? View.VISIBLE : View.GONE);
+    }
+
     private void setOnline(boolean online) {
         if (isOnline == online) {
+            updateDataSaverUi();
             return;
         }
         isOnline = online;
         updateOfflineUi();
+        updateDataSaverUi();
 
         if (online) {
             if (stateIsError && stateOverlay.getVisibility() == View.VISIBLE) {
@@ -747,6 +852,383 @@ public class MainActivity extends AppCompatActivity {
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
     }
 
+    private void openSavedArticles() {
+        startActivity(new Intent(this, SavedArticlesActivity.class));
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+    }
+
+    private void updateArticleActions() {
+        if (readerButton == null || savedButton == null) {
+            return;
+        }
+        boolean showReader = pageIsArticle && contentVisible && !stateIsError;
+        readerButton.setVisibility(showReader ? View.VISIBLE : View.GONE);
+        readerButton.setSelected(readerModeActive);
+        readerButton.setContentDescription(
+            getString(readerModeActive ? R.string.reader_close : R.string.cd_reader)
+        );
+
+        boolean hasSaved = savedStore != null && savedStore.count() > 0;
+        boolean showSaved = pageIsArticle ? (!stateIsError || hasSaved) : hasSaved;
+        savedButton.setVisibility(showSaved ? View.VISIBLE : View.GONE);
+        updateSavedIcon();
+    }
+
+    private void updateSavedIcon() {
+        if (savedButton == null) {
+            return;
+        }
+        boolean saved = pageIsArticle && savedStore != null && savedStore.isSaved(currentArticleUrl);
+        savedButton.setImageResource(saved ? R.drawable.ic_bookmark_filled : R.drawable.ic_bookmark);
+    }
+
+    private void showSavedSheet() {
+        if (savedDialog != null && savedDialog.isShowing()) {
+            return;
+        }
+
+        final Dialog dialog = createSheet(R.layout.sheet_saved);
+        savedDialog = dialog;
+
+        LinearLayout list = dialog.findViewById(R.id.savedSheetList);
+        TextView status = dialog.findViewById(R.id.savedSheetStatus);
+        list.removeAllViews();
+
+        SavedArticle existing = pageIsArticle && savedStore != null
+            ? savedStore.findByUrl(currentArticleUrl)
+            : null;
+
+        if (pageIsArticle) {
+            if (existing == null) {
+                addSheetRow(
+                    list,
+                    R.drawable.ic_bookmark,
+                    getString(R.string.saved_save_title),
+                    getString(R.string.saved_save_sub),
+                    v -> {
+                        dialog.dismiss();
+                        saveCurrentArticle();
+                    }
+                );
+            } else {
+                addSheetRow(
+                    list,
+                    R.drawable.ic_bookmark_filled,
+                    getString(R.string.saved_update_title),
+                    getString(R.string.saved_update_sub),
+                    v -> {
+                        dialog.dismiss();
+                        saveCurrentArticle();
+                    }
+                );
+                addSheetRow(
+                    list,
+                    R.drawable.ic_delete,
+                    getString(R.string.saved_remove_title),
+                    getString(R.string.saved_remove_sub),
+                    v -> {
+                        dialog.dismiss();
+                        confirmRemoveSaved(existing);
+                    }
+                );
+            }
+            if (status != null) {
+                status.setVisibility(View.GONE);
+            }
+        } else {
+            if (status != null) {
+                status.setText(R.string.saved_none_hint);
+                status.setVisibility(View.VISIBLE);
+            }
+        }
+
+        int count = savedStore != null ? savedStore.count() : 0;
+        String countText = count > 0
+            ? getResources().getQuantityString(R.plurals.saved_count, count, count)
+            : getString(R.string.saved_empty_title);
+        addSheetRow(
+            list,
+            R.drawable.ic_library,
+            getString(R.string.saved_view_title),
+            countText,
+            v -> {
+                dialog.dismiss();
+                openSavedArticles();
+            }
+        );
+
+        dialog.setOnDismissListener(d -> {
+            if (savedDialog == dialog) {
+                savedDialog = null;
+            }
+        });
+
+        dialog.show();
+        sizeSheet(dialog);
+    }
+
+    private void saveCurrentArticle() {
+        if (savingArticle || webView == null) {
+            return;
+        }
+        if (!pageIsArticle
+            || TextUtils.isEmpty(currentArticleUrl)
+            || !UrlPolicy.isInternal(currentArticleUrl)) {
+            Toast.makeText(this, R.string.saved_not_article, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        savingArticle = true;
+        showSavingDialog();
+
+        webView.evaluateJavascript(ArticleScripts.EXTRACT_JS, raw -> {
+            if (isFinishing()) {
+                savingArticle = false;
+                dismissSavingDialog();
+                return;
+            }
+            final JSONObject data = decodeJsObject(raw);
+            if (data == null) {
+                savingArticle = false;
+                dismissSavingDialog();
+                Toast.makeText(this, R.string.saved_not_article, Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            final String html = data.optString("html", "");
+            final String extractedTitle = data.optString("title", currentArticleTitle);
+            final String byline = data.optString("byline", "");
+            final String url = data.optString("url", currentArticleUrl);
+            if (TextUtils.isEmpty(html) || html.trim().length() < 150 || !UrlPolicy.isInternal(url)) {
+                savingArticle = false;
+                dismissSavingDialog();
+                Toast.makeText(this, R.string.saved_not_article, Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            final boolean wasSaved = savedStore != null && savedStore.isSaved(url);
+            final SavedArticlesStore store = savedStore;
+            if (store == null || ioExecutor == null) {
+                savingArticle = false;
+                dismissSavingDialog();
+                return;
+            }
+
+            try {
+                ioExecutor.execute(() -> {
+                    SavedArticle article = null;
+                    try {
+                        article = store.save(url, extractedTitle, byline, html);
+                    } catch (Exception ignored) {
+                        // Se informa abajo con un mensaje claro.
+                    }
+                    final SavedArticle result = article;
+                    runOnUiThread(() -> {
+                        if (isFinishing()) {
+                            savingArticle = false;
+                            dismissSavingDialog();
+                            return;
+                        }
+                        savingArticle = false;
+                        dismissSavingDialog();
+                        if (result == null) {
+                            Toast.makeText(
+                                MainActivity.this,
+                                R.string.saved_failed,
+                                Toast.LENGTH_SHORT
+                            ).show();
+                        } else {
+                            Toast.makeText(
+                                MainActivity.this,
+                                wasSaved ? R.string.saved_updated : R.string.saved_saved,
+                                Toast.LENGTH_SHORT
+                            ).show();
+                        }
+                        updateArticleActions();
+                    });
+                });
+            } catch (RuntimeException e) {
+                savingArticle = false;
+                dismissSavingDialog();
+                Toast.makeText(this, R.string.saved_failed, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void confirmRemoveSaved(SavedArticle article) {
+        if (article == null) {
+            return;
+        }
+        String name = TextUtils.isEmpty(article.title)
+            ? getString(R.string.saved_activity_title)
+            : article.title;
+        new AlertDialog.Builder(this)
+            .setTitle(R.string.saved_delete_title)
+            .setMessage(getString(R.string.saved_delete_message, name))
+            .setNegativeButton(R.string.saved_delete_cancel, null)
+            .setPositiveButton(
+                R.string.saved_delete_confirm,
+                (dialog, which) -> removeSavedArticle(article.id)
+            )
+            .show();
+    }
+
+    private void removeSavedArticle(String id) {
+        if (savedStore == null || ioExecutor == null || TextUtils.isEmpty(id)) {
+            return;
+        }
+        final SavedArticlesStore store = savedStore;
+        try {
+            ioExecutor.execute(() -> {
+                store.remove(id);
+                runOnUiThread(() -> {
+                    if (isFinishing()) {
+                        return;
+                    }
+                    Toast.makeText(
+                        MainActivity.this,
+                        R.string.saved_removed,
+                        Toast.LENGTH_SHORT
+                    ).show();
+                    updateArticleActions();
+                });
+            });
+        } catch (RuntimeException e) {
+            Toast.makeText(this, R.string.saved_failed, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showSavingDialog() {
+        dismissSavingDialog();
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_progress);
+        dialog.setCancelable(false);
+        dialog.setCanceledOnTouchOutside(false);
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            window.setDimAmount(0.42f);
+        }
+        savingDialog = dialog;
+        dialog.show();
+    }
+
+    private void dismissSavingDialog() {
+        if (savingDialog != null) {
+            if (savingDialog.isShowing()) {
+                savingDialog.dismiss();
+            }
+            savingDialog = null;
+        }
+    }
+
+    private void toggleReaderMode() {
+        if (!pageIsArticle) {
+            Toast.makeText(this, R.string.reader_unavailable, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (readerModeActive) {
+            setReaderMode(false);
+            return;
+        }
+
+        if (webView == null) {
+            return;
+        }
+        final boolean dark = AppPrefs.isDarkMode(this);
+        webView.evaluateJavascript(ArticleScripts.openReader(dark), value -> {
+            boolean opened = "true".equals(value);
+            readerModeActive = opened;
+            updateArticleActions();
+            if (!opened) {
+                Toast.makeText(MainActivity.this, R.string.reader_failed, Toast.LENGTH_SHORT).show();
+            }
+        });
+        readerModeActive = true;
+        updateArticleActions();
+    }
+
+    private void setReaderMode(boolean enabled) {
+        if (!enabled) {
+            if (webView != null) {
+                webView.evaluateJavascript(ArticleScripts.closeReader(), null);
+            }
+            if (readerModeActive) {
+                Toast.makeText(this, R.string.reader_off, Toast.LENGTH_SHORT).show();
+            }
+            readerModeActive = false;
+            updateArticleActions();
+            return;
+        }
+        toggleReaderMode();
+    }
+
+    private JSONObject decodeJsObject(String raw) {
+        if (raw == null || "null".equals(raw)) {
+            return null;
+        }
+        try {
+            Object value = new JSONTokener(raw).nextValue();
+            if (value instanceof JSONObject) {
+                return (JSONObject) value;
+            }
+            if (value instanceof String) {
+                Object inner = new JSONTokener((String) value).nextValue();
+                if (inner instanceof JSONObject) {
+                    return (JSONObject) inner;
+                }
+            }
+        } catch (Exception ignored) {
+            // La respuesta no es un objeto JSON válido.
+        }
+        return null;
+    }
+
+    private void detectPageInfo(WebView view, String url) {
+        final int request = ++pageInfoRequest;
+        final String finalUrl = url;
+        view.evaluateJavascript(ArticleScripts.PAGE_INFO_JS, raw -> {
+            if (request != pageInfoRequest || isFinishing()) {
+                return;
+            }
+            JSONObject info = decodeJsObject(raw);
+            boolean article = info != null && info.optBoolean("article", false);
+            String title = info != null ? info.optString("title", "") : "";
+            pageIsArticle = article && UrlPolicy.isInternal(finalUrl);
+            currentArticleUrl = finalUrl == null ? "" : finalUrl;
+            currentArticleTitle = cleanTitle(
+                TextUtils.isEmpty(title) ? currentTitle : title
+            );
+            updateArticleActions();
+        });
+    }
+
+    private void applyReadingTheme() {
+        if (webView == null) {
+            return;
+        }
+        webView.setBackgroundColor(ContextCompat.getColor(this, R.color.surface));
+        swipeRefresh.setProgressBackgroundColorSchemeColor(
+            ContextCompat.getColor(this, R.color.surface)
+        );
+        applyContentSystemBars(
+            getWindow(),
+            WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView())
+        );
+        String url = webView.getUrl();
+        if (url != null && !url.startsWith("about:")) {
+            boolean dark = AppPrefs.isDarkMode(this);
+            webView.evaluateJavascript(ArticleScripts.applyTheme(dark), null);
+            if (readerModeActive && pageIsArticle) {
+                // El modo lectura se dibuja con su propia hoja de estilos: se
+                // vuelve a generar para que tome el tema recién elegido.
+                webView.evaluateJavascript(ArticleScripts.openReader(dark), null);
+            }
+        }
+    }
+
     private void shareCurrentPage() {
         String safeUrl = UrlPolicy.normalize(webView.getUrl());
         if (safeUrl == null) {
@@ -848,6 +1330,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean handleNavigation(WebView view, String url, String method) {
+        if (url != null && url.startsWith("eoc-reader://close")) {
+            setReaderMode(false);
+            return true;
+        }
+
         UrlPolicy.Action action = UrlPolicy.classify(url);
 
         if (action == UrlPolicy.Action.INTERNAL) {
@@ -1057,6 +1544,9 @@ public class MainActivity extends AppCompatActivity {
         if (webView.getSettings().getTextZoom() != zoom) {
             webView.getSettings().setTextZoom(zoom);
         }
+        applyReadingTheme();
+        updateDataSaverUi();
+        updateArticleActions();
     }
 
     // ------------------------------------------------------------------
@@ -1221,15 +1711,18 @@ public class MainActivity extends AppCompatActivity {
             window.setWindowAnimations(R.style.EOC_SheetAnimation);
             window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
             WindowCompat.setDecorFitsSystemWindows(window, false);
+            boolean dark = AppPrefs.isDarkMode(this);
             if (Build.VERSION.SDK_INT < 35) {
-                window.setNavigationBarColor(Color.WHITE);
+                window.setNavigationBarColor(
+                    ContextCompat.getColor(this, R.color.surface)
+                );
             }
             WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(
                 window,
                 window.getDecorView()
             );
             if (controller != null) {
-                controller.setAppearanceLightNavigationBars(true);
+                controller.setAppearanceLightNavigationBars(!dark);
             }
 
             // La hoja se dibuja hasta el borde inferior, pero su contenido
@@ -1630,6 +2123,23 @@ public class MainActivity extends AppCompatActivity {
     private final class EocWebViewClient extends WebViewClient {
 
         @Override
+        public WebResourceResponse shouldInterceptRequest(
+            WebView view,
+            WebResourceRequest request
+        ) {
+            if (dataSaverBlocking
+                && !request.isForMainFrame()
+                && isImageRequest(request)) {
+                return new WebResourceResponse(
+                    "image/png",
+                    null,
+                    new ByteArrayInputStream(TRANSPARENT_PNG)
+                );
+            }
+            return super.shouldInterceptRequest(view, request);
+        }
+
+        @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
             // Solo se decide la navegación del documento principal. Los iframes
             // (video incrustado, comentarios) siguen su curso normal.
@@ -1649,10 +2159,16 @@ public class MainActivity extends AppCompatActivity {
         public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
             super.onPageStarted(view, url, favicon);
             pageHadError = false;
+            pageInfoRequest++;
+            pageIsArticle = false;
+            readerModeActive = false;
+            currentArticleUrl = url == null ? "" : url;
+            currentArticleTitle = "";
             progressBar.setProgress(0);
             if (!contentVisible) {
                 showWelcome();
             }
+            updateArticleActions();
             updateNavState();
         }
 
@@ -1664,6 +2180,13 @@ public class MainActivity extends AppCompatActivity {
                 hideState();
                 stopSplash();
                 updateOfflineUi();
+                updateDataSaverUi();
+                if (UrlPolicy.isInternal(url)) {
+                    view.evaluateJavascript(
+                        ArticleScripts.applyTheme(AppPrefs.isDarkMode(MainActivity.this)),
+                        null
+                    );
+                }
             }
         }
 
@@ -1676,6 +2199,8 @@ public class MainActivity extends AppCompatActivity {
             updateNavState();
 
             if (pageHadError) {
+                pageIsArticle = false;
+                updateArticleActions();
                 showError(!checkOnline());
                 return;
             }
@@ -1684,11 +2209,20 @@ public class MainActivity extends AppCompatActivity {
             hideState();
             stopSplash();
             updateOfflineUi();
+            updateDataSaverUi();
 
             if (UrlPolicy.isInternal(url)) {
                 view.evaluateJavascript(LINK_TARGET_FIX_JS, null);
-                view.evaluateJavascript(READER_CSS_JS, null);
+                view.evaluateJavascript(ArticleScripts.BASE_CSS_JS, null);
+                view.evaluateJavascript(
+                    ArticleScripts.applyTheme(AppPrefs.isDarkMode(MainActivity.this)),
+                    null
+                );
+                detectPageInfo(view, url);
+            } else {
+                pageIsArticle = false;
             }
+            updateArticleActions();
         }
 
         @Override
@@ -1706,7 +2240,10 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
             pageHadError = true;
+            pageIsArticle = false;
+            readerModeActive = false;
             swipeRefresh.setRefreshing(false);
+            updateArticleActions();
             showError(!checkOnline());
         }
 
@@ -1719,7 +2256,10 @@ public class MainActivity extends AppCompatActivity {
             super.onReceivedHttpError(view, request, errorResponse);
             if (request.isForMainFrame() && errorResponse.getStatusCode() >= 400) {
                 pageHadError = true;
+                pageIsArticle = false;
+                readerModeActive = false;
                 swipeRefresh.setRefreshing(false);
+                updateArticleActions();
                 showError(!checkOnline());
             }
         }
@@ -1729,7 +2269,10 @@ public class MainActivity extends AppCompatActivity {
             // Nunca se continúa ante un certificado no verificable.
             handler.cancel();
             pageHadError = true;
+            pageIsArticle = false;
+            readerModeActive = false;
             swipeRefresh.setRefreshing(false);
+            updateArticleActions();
             showSecurityError();
         }
 
@@ -1927,10 +2470,12 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         if (webView != null) {
             webView.onResume();
-            applyPreferences();
         }
         isOnline = checkOnline();
+        cellularNetwork = checkCellular();
         updateOfflineUi();
+        updateDataSaverUi();
+        applyPreferences();
 
         if (updateManager != null) {
             runUpdateCheck(false);
@@ -1966,6 +2511,12 @@ public class MainActivity extends AppCompatActivity {
             searchDialog.dismiss();
             searchDialog = null;
         }
+        if (savedDialog != null) {
+            savedDialog.dismiss();
+            savedDialog = null;
+        }
+        dismissSavingDialog();
+        savedStore = null;
         if (ioExecutor != null) {
             ioExecutor.shutdownNow();
             ioExecutor = null;

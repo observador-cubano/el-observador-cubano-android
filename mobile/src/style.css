@@ -17,6 +17,39 @@
   --eoc-gutter: 16px;
 }
 
+html {
+  color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --eoc-white: #151b23;
+  --eoc-bg: #0f141a;
+  --eoc-border: #2a3442;
+  --eoc-blue-soft: #11243f;
+  --eoc-gray-400: #7c8797;
+  --eoc-gray-500: #aab4c2;
+  --eoc-gray-700: #d3dae3;
+  --eoc-gray-900: #e8edf3;
+  --eoc-amber: #ffc46b;
+  --eoc-amber-soft: #2a2113;
+  --eoc-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 26px rgba(0, 0, 0, 0.3);
+}
+
+html[data-theme='dark'] .badge,
+html[data-theme='dark'] .range__value,
+html[data-theme='dark'] .status--ok,
+html[data-theme='dark'] .details summary,
+html[data-theme='dark'] .link-row__chevron,
+html[data-theme='dark'] .btn--ghost {
+  color: #8ab4ff;
+}
+
+html[data-theme='dark'] .toast {
+  background: #2a3442;
+  color: #f2f5f9;
+}
+
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;

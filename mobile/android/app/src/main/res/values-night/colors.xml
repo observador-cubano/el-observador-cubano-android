@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Superficies y texto en modo nocturno -->
+    <color name="surface">#151B23</color>
+    <color name="background">#0F141A</color>
+    <color name="border">#2A3442</color>
+    <color name="text_primary">#E8EDF3</color>
+    <color name="text_secondary">#AAB4C2</color>
+    <color name="text_tertiary">#7C8797</color>
+    <color name="accent_text">#8AB4FF</color>
+
+    <!-- Navegación -->
+    <color name="nav_icon">#9AA6B5</color>
+    <color name="nav_icon_selected">#6FA8FF</color>
+
+    <!-- Estados -->
+    <color name="offline_bg">#11243F</color>
+    <color name="offline_text">#BFD9FF</color>
+    <color name="offline_border">#234C7D</color>
+    <color name="error_text">#FF8A80</color>
+    <color name="progress_track">#33FFFFFF</color>
+
+    <!-- Interacción -->
+    <color name="brand_blue_soft">#11243F</color>
+    <color name="ripple_light">#33FFFFFF</color>
+</resources>

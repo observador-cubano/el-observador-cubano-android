@@ -17,6 +17,8 @@ import './style.css';
 interface ShellPlugin {
   close(): Promise<void>;
   openUpdates(): Promise<void>;
+  openSaved(): Promise<void>;
+  applyTheme(): Promise<void>;
 }
 
 const Shell = registerPlugin<ShellPlugin>('Shell');
@@ -24,18 +26,25 @@ const Shell = registerPlugin<ShellPlugin>('Shell');
 const DEFAULT_SETTINGS = {
   externalLinkMode: 'system',
   textZoom: 100,
+  darkMode: 'system',
+  dataSaver: false,
 } as const;
 
 type ExternalLinkMode = 'system' | 'inapp';
+type DarkMode = 'system' | 'light' | 'dark';
 
 interface Settings {
   externalLinkMode: ExternalLinkMode;
   textZoom: number;
+  darkMode: DarkMode;
+  dataSaver: boolean;
 }
 
 const SETTING_KEYS = {
   externalLinkMode: 'externalLinkMode',
   textZoom: 'textZoom',
+  darkMode: 'darkMode',
+  dataSaver: 'dataSaver',
 } as const;
 
 const $ = <T extends Element>(selector: string): T | null =>
@@ -65,15 +74,24 @@ function normalizeMode(value: string | null | undefined): ExternalLinkMode {
   return value === 'inapp' ? 'inapp' : 'system';
 }
 
+function normalizeDarkMode(value: string | null | undefined): DarkMode {
+  if (value === 'dark' || value === 'light') return value;
+  return 'system';
+}
+
 async function loadSettings(): Promise<Settings> {
-  const [mode, zoom] = await Promise.all([
+  const [mode, zoom, darkMode, dataSaver] = await Promise.all([
     Preferences.get({ key: SETTING_KEYS.externalLinkMode }),
     Preferences.get({ key: SETTING_KEYS.textZoom }),
+    Preferences.get({ key: SETTING_KEYS.darkMode }),
+    Preferences.get({ key: SETTING_KEYS.dataSaver }),
   ]);
 
   return {
     externalLinkMode: normalizeMode(mode.value),
     textZoom: clampZoom(Number(zoom.value ?? DEFAULT_SETTINGS.textZoom)),
+    darkMode: normalizeDarkMode(darkMode.value),
+    dataSaver: dataSaver.value === 'on',
   };
 }
 
@@ -88,9 +106,42 @@ function applySettingsToForm(settings: Settings): void {
       input.checked = input.value === settings.externalLinkMode;
     });
 
+  document.querySelectorAll<HTMLInputElement>('input[name="darkMode"]').forEach((input) => {
+    input.checked = input.value === settings.darkMode;
+  });
+
+  const dataSaver = $('#data-saver') as HTMLInputElement | null;
+  if (dataSaver) dataSaver.checked = settings.dataSaver;
+
   const range = $('#text-zoom') as HTMLInputElement | null;
   if (range) range.value = String(settings.textZoom);
   updateZoomPreview(settings.textZoom);
+  applyPageTheme(settings.darkMode);
+  watchSystemTheme(settings.darkMode);
+}
+
+let systemThemeQuery: MediaQueryList | null = null;
+
+function systemPrefersDark(): boolean {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+function applyPageTheme(mode: DarkMode): void {
+  const dark = mode === 'dark' || (mode === 'system' && systemPrefersDark());
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+}
+
+function watchSystemTheme(mode: DarkMode): void {
+  systemThemeQuery?.removeEventListener('change', handleSystemThemeChange);
+  systemThemeQuery = null;
+  if (mode !== 'system') return;
+  systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  systemThemeQuery.addEventListener('change', handleSystemThemeChange);
+}
+
+function handleSystemThemeChange(): void {
+  applyPageTheme('system');
+  applySystemBarStyles();
 }
 
 function updateZoomPreview(zoom: number): void {
@@ -151,6 +202,29 @@ function bindEvents(): void {
       });
     });
 
+  document.querySelectorAll<HTMLInputElement>('input[name="darkMode"]').forEach((input) => {
+    input.addEventListener('change', () => {
+      if (!input.checked) return;
+      const mode = normalizeDarkMode(input.value);
+      applyPageTheme(mode);
+      watchSystemTheme(mode);
+      void saveSetting(SETTING_KEYS.darkMode, mode)
+        .then(() => Shell.applyTheme().catch(() => undefined))
+        .then(() => showToast('Apariencia actualizada'));
+    });
+  });
+
+  const dataSaver = $('#data-saver') as HTMLInputElement | null;
+  dataSaver?.addEventListener('change', () => {
+    void saveSetting(SETTING_KEYS.dataSaver, dataSaver.checked ? 'on' : 'off').then(() => {
+      showToast(
+        dataSaver.checked
+          ? 'Las imágenes se omitirán con datos móviles'
+          : 'Las imágenes se cargarán siempre'
+      );
+    });
+  });
+
   const range = $('#text-zoom') as HTMLInputElement | null;
   range?.addEventListener('input', () => {
     const zoom = clampZoom(Number(range.value));
@@ -167,9 +241,18 @@ function bindEvents(): void {
     void Promise.all([
       saveSetting(SETTING_KEYS.externalLinkMode, DEFAULT_SETTINGS.externalLinkMode),
       saveSetting(SETTING_KEYS.textZoom, String(DEFAULT_SETTINGS.textZoom)),
+      saveSetting(SETTING_KEYS.darkMode, DEFAULT_SETTINGS.darkMode),
+      saveSetting(SETTING_KEYS.dataSaver, 'off'),
     ]).then(() => {
       applySettingsToForm({ ...DEFAULT_SETTINGS });
+      void Shell.applyTheme().catch(() => undefined);
       showToast('Configuración restablecida');
+    });
+  });
+
+  $('#btn-open-saved')?.addEventListener('click', () => {
+    void Shell.openSaved().catch(() => {
+      showToast('Abre la app de Android para ver los guardados');
     });
   });
 
@@ -209,6 +292,8 @@ void (async () => {
 function applySystemBarStyles(): void {
   if (!Capacitor.isNativePlatform()) return;
 
+  const dark = document.documentElement.dataset.theme === 'dark';
+
   void SystemBars.setStyle({
     style: SystemBarsStyle.Dark,
     bar: SystemBarType.StatusBar,
@@ -217,7 +302,7 @@ function applySystemBarStyles(): void {
   });
 
   void SystemBars.setStyle({
-    style: SystemBarsStyle.Light,
+    style: dark ? SystemBarsStyle.Dark : SystemBarsStyle.Light,
     bar: SystemBarType.NavigationBar,
   }).catch(() => {
     // Igual que arriba: no es un fallo funcional de la pantalla.

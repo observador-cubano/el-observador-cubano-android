@@ -58,6 +58,28 @@
                     android:layout_weight="1" />
 
                 <ImageButton
+                    android:id="@+id/btnReader"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/cd_reader"
+                    android:padding="13dp"
+                    android:src="@drawable/ic_reader"
+                    android:visibility="gone"
+                    app:tint="@color/top_icon_tint" />
+
+                <ImageButton
+                    android:id="@+id/btnSaved"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/cd_saved"
+                    android:padding="13dp"
+                    android:src="@drawable/ic_bookmark"
+                    android:visibility="gone"
+                    app:tint="@color/white" />
+
+                <ImageButton
                     android:id="@+id/btnShareTop"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
@@ -182,6 +204,51 @@
                 app:tint="@color/offline_text" />
         </LinearLayout>
 
+        <!-- Aviso de ahorro de datos activo -->
+        <LinearLayout
+            android:id="@+id/dataSaverBanner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_offline_banner"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="4dp"
+            android:paddingBottom="6dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_cloud_off"
+                app:tint="@color/offline_text" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="9dp"
+                android:layout_weight="1"
+                android:text="@string/data_saver_banner_text"
+                android:textColor="@color/offline_text"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/dataSaverSettings"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:minWidth="0dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="@string/data_saver_banner_action"
+                android:textAllCaps="false"
+                android:textColor="@color/accent_text"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
         <FrameLayout
             android:id="@+id/contentContainer"
             android:layout_width="match_parent"
@@ -197,7 +264,7 @@
                     android:id="@+id/webView"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:background="@color/white"
+                    android:background="@color/surface"
                     android:focusable="true"
                     android:focusableInTouchMode="true" />
             </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
@@ -211,7 +278,7 @@
             android:id="@+id/bottomBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/white"
+            android:background="@color/surface"
             android:elevation="12dp"
             android:orientation="vertical">
 
