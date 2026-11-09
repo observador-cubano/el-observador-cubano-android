@@ -52,6 +52,19 @@ public class ShellPlugin extends Plugin {
         }
     }
 
+    /** Abre la pantalla nativa del historial de lectura. */
+    @PluginMethod
+    public void openHistory(PluginCall call) {
+        Activity activity = getActivity();
+        call.resolve();
+        if (activity != null) {
+            activity.runOnUiThread(() -> {
+                Intent intent = new Intent(activity, ReadingHistoryActivity.class);
+                activity.startActivity(intent);
+            });
+        }
+    }
+
     /**
      * Aplica el modo claro/oscuro guardado en las preferencias. Cambiar el
      * modo por defecto hace que las actividades existentes se vuelvan a crear

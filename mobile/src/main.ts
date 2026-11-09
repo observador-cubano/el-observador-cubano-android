@@ -18,6 +18,7 @@ interface ShellPlugin {
   close(): Promise<void>;
   openUpdates(): Promise<void>;
   openSaved(): Promise<void>;
+  openHistory(): Promise<void>;
   applyTheme(): Promise<void>;
 }
 
@@ -253,6 +254,12 @@ function bindEvents(): void {
   $('#btn-open-saved')?.addEventListener('click', () => {
     void Shell.openSaved().catch(() => {
       showToast('Abre la app de Android para ver los guardados');
+    });
+  });
+
+  $('#btn-open-history')?.addEventListener('click', () => {
+    void Shell.openHistory().catch(() => {
+      showToast('Abre la app de Android para ver el historial');
     });
   });
 
