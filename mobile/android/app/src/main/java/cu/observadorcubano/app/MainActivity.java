@@ -106,6 +106,11 @@ public class MainActivity extends AppCompatActivity {
     private static final long POPUP_TIMEOUT_MS = 8000L;
     private static final long SPLASH_FALLBACK_MS = 12000L;
     private static final long PROGRESS_POLL_MS = 1200L;
+    /**
+     * Por encima de este tamaño el HTML no se envía a otra actividad: se usa
+     * el modo lectura superpuesto para no arriesgar el límite de transacción.
+     */
+    private static final int MAX_READER_HTML_CHARS = 200_000;
     private static final long UPDATE_FIRST_CHECK_DELAY_MS = 1800L;
     private static final int REQUEST_NOTIFICATIONS = 4301;
     private static final byte[] TRANSPARENT_PNG = Base64.decode(
@@ -220,6 +225,7 @@ public class MainActivity extends AppCompatActivity {
     private double lastReaderProgress = 0d;
     private double lastPageProgress = 0d;
     private boolean lastSnapshotReader = false;
+    private boolean suppressProgressCapture = false;
     private final Runnable progressPoll = new Runnable() {
         @Override
         public void run() {
@@ -1195,22 +1201,78 @@ public class MainActivity extends AppCompatActivity {
             setReaderMode(false);
             return;
         }
+        if (webView == null) {
+            return;
+        }
+        double start = lastSnapshotReader ? lastReaderProgress : lastPageProgress;
+        openNativeReader(start);
+    }
 
+    /**
+     * Intenta abrir el lector nativo con el artículo ya extraído. Si la
+     * extracción falla o el HTML es demasiado grande, se conserva el modo
+     * lectura superpuesto como respaldo.
+     */
+    private void openNativeReader(final double progress) {
+        if (webView == null || !pageIsArticle) {
+            return;
+        }
+        final double start = ReadingProgress.clamp(progress);
+        webView.evaluateJavascript(ArticleScripts.EXTRACT_JS, raw -> {
+            if (isFinishing() || isDestroyed() || !pageIsArticle || webView == null) {
+                return;
+            }
+            JSONObject data = decodeJsObject(raw);
+            String html = data != null ? data.optString("html", "") : "";
+            String url = data != null ? data.optString("url", currentArticleUrl) : "";
+            if (TextUtils.isEmpty(html)
+                || html.trim().length() < 150
+                || html.length() > MAX_READER_HTML_CHARS
+                || !UrlPolicy.isInternal(url)) {
+                openReaderOverlay(start);
+                return;
+            }
+
+            String title = data.optString("title", currentArticleTitle);
+            String byline = data.optString("byline", "");
+            Intent intent = new Intent(MainActivity.this, ReaderActivity.class);
+            intent.putExtra(ReaderActivity.EXTRA_URL, url);
+            intent.putExtra(ReaderActivity.EXTRA_TITLE, cleanTitle(title));
+            intent.putExtra(ReaderActivity.EXTRA_BYLINE, byline);
+            intent.putExtra(ReaderActivity.EXTRA_HTML, html);
+            intent.putExtra(ReaderActivity.EXTRA_PROGRESS, start);
+
+            suppressProgressCapture = true;
+            try {
+                startActivity(intent);
+                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+            } catch (RuntimeException e) {
+                suppressProgressCapture = false;
+                openReaderOverlay(start);
+            }
+        });
+    }
+
+    /** Modo lectura superpuesto, usado como respaldo del lector nativo. */
+    private void openReaderOverlay(final double progress) {
         if (webView == null) {
             return;
         }
         final boolean dark = AppPrefs.isDarkMode(this);
-        lastReaderProgress = 0d;
+        lastReaderProgress = ReadingProgress.clamp(progress);
         lastSnapshotReader = true;
-        webView.evaluateJavascript(ArticleScripts.openReader(dark), value -> {
-            boolean opened = "true".equals(value);
-            readerModeActive = opened;
-            lastSnapshotReader = opened;
-            updateArticleActions();
-            if (!opened) {
-                Toast.makeText(MainActivity.this, R.string.reader_failed, Toast.LENGTH_SHORT).show();
+        webView.evaluateJavascript(
+            ArticleScripts.openReader(dark, lastReaderProgress),
+            value -> {
+                boolean opened = "true".equals(value);
+                readerModeActive = opened;
+                lastSnapshotReader = opened;
+                updateArticleActions();
+                if (!opened) {
+                    Toast.makeText(MainActivity.this, R.string.reader_failed, Toast.LENGTH_SHORT).show();
+                }
             }
-        });
+        );
         readerModeActive = true;
         updateArticleActions();
     }
@@ -1302,10 +1364,9 @@ public class MainActivity extends AppCompatActivity {
         pendingRestoreReader = false;
 
         if (reader) {
-            readerModeActive = true;
-            lastReaderProgress = progress;
-            lastSnapshotReader = true;
-            updateArticleActions();
+            // El historial pide continuar en modo lectura: se abre el lector
+            // nativo en la posición guardada y, si no se puede extraer, el
+            // respaldo superpuesto.
             root.postDelayed(() -> {
                 if (isFinishing()
                     || webView == null
@@ -1313,15 +1374,7 @@ public class MainActivity extends AppCompatActivity {
                     || !sameArticleUrl(url, currentArticleUrl)) {
                     return;
                 }
-                webView.evaluateJavascript(
-                    ArticleScripts.openReader(AppPrefs.isDarkMode(this), progress),
-                    value -> {
-                        boolean opened = "true".equals(value);
-                        readerModeActive = opened;
-                        lastSnapshotReader = opened;
-                        updateArticleActions();
-                    }
-                );
+                openNativeReader(progress);
             }, 400L);
             return;
         }
@@ -1387,6 +1440,11 @@ public class MainActivity extends AppCompatActivity {
      * historial. Se llama al pausar la aplicación.
      */
     private void captureReadingProgress() {
+        if (suppressProgressCapture) {
+            // Al abrir el lector nativo, esa pantalla guarda su propia
+            // posición; la página principal no debe sobrescribirla.
+            return;
+        }
         if (historyStore == null
             || webView == null
             || !pageIsArticle
@@ -2691,6 +2749,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        suppressProgressCapture = false;
         if (webView != null) {
             webView.onResume();
         }

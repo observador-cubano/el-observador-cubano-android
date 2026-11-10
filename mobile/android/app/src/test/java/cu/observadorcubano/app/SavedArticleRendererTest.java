@@ -59,6 +59,78 @@ public class SavedArticleRendererTest {
     }
 
     @Test
+    public void renderOnlineAllowsHttpsImages() {
+        String html = SavedArticleRenderer.renderOnline(
+            "Nota",
+            "Redacción",
+            "https://observadorcubano.blogspot.com/2026/01/nota.html",
+            "<p>Texto</p><img src=\"https://example.com/a.jpg\">",
+            false,
+            true
+        );
+
+        assertTrue(html.contains("img-src https: data:"));
+        assertTrue(html.contains("<img src=\"https://example.com/a.jpg\">"));
+        assertTrue(html.contains("Fuente: https://observadorcubano.blogspot.com/2026/01/nota.html"));
+        assertTrue(html.contains("data-theme=\"light\""));
+        assertFalse(html.contains("Guardado el"));
+        assertFalse(html.contains("imágenes no se cargan"));
+    }
+
+    @Test
+    public void renderOnlineOmitsImagesWhenDataSaverBlocksThem() {
+        String html = SavedArticleRenderer.renderOnline(
+            "Nota",
+            "",
+            "https://observadorcubano.blogspot.com/2026/01/nota.html",
+            "<p>Texto</p><img src=\"https://example.com/a.jpg\">",
+            true,
+            false
+        );
+
+        assertTrue(html.contains("img-src data:"));
+        assertFalse(html.contains("<img"));
+        assertTrue(html.contains(
+            "Las imágenes no se cargan porque el ahorro de datos está activo."
+        ));
+        assertTrue(html.contains("data-theme=\"dark\""));
+    }
+
+    @Test
+    public void renderOnlineSanitizesExecutableMarkup() {
+        String html = SavedArticleRenderer.renderOnline(
+            "Nota",
+            "",
+            "https://observadorcubano.blogspot.com/2026/01/nota.html",
+            "<p onclick=\"steal()\">Texto</p><script>alert(1)</script>"
+                + "<img src=\"https://example.com/a.jpg\" onerror=\"boom()\">",
+            false,
+            true
+        );
+
+        assertFalse(html.contains("<script"));
+        assertFalse(html.contains("onclick"));
+        assertFalse(html.contains("onerror"));
+        assertTrue(html.contains("Texto"));
+    }
+
+    @Test
+    public void renderOnlineUsesFallbackTitleAndHidesEmptyByline() {
+        String html = SavedArticleRenderer.renderOnline(
+            "   ",
+            "   ",
+            "",
+            "<p>Texto</p>",
+            false,
+            true
+        );
+
+        assertTrue(html.contains("<title>Artículo</title>"));
+        assertFalse(html.contains("<p class=\"eoc-byline\">"));
+        assertFalse(html.contains("<footer class=\"eoc-footer\">"));
+    }
+
+    @Test
     public void sanitizeContentRemovesExecutableMarkup() {
         String dirty = "<p onclick=\"steal()\">Hola</p>"
             + "<script>alert(1)</script>"

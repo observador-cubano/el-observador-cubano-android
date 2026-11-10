@@ -80,6 +80,10 @@
     <string name="reader_kicker">El Observador Cubano</string>
     <string name="reader_close">Cerrar modo lectura</string>
     <string name="reader_label">Modo lectura</string>
+    <string name="reader_read_error">No se pudo abrir el modo lectura.</string>
+    <string name="reader_error_action">Volver al artículo</string>
+    <string name="cd_reader_back">Volver al artículo</string>
+    <string name="cd_reader_share">Compartir el artículo</string>
 
     <!-- Guardados sin conexión -->
     <string name="saved_sheet_title">Guardados sin conexión</string>
