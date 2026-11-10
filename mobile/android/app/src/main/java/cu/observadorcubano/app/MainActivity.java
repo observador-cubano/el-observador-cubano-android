@@ -1961,7 +1961,14 @@ public class MainActivity extends AppCompatActivity {
         error.setVisibility(View.GONE);
         hideKeyboard(input);
         dialog.dismiss();
-        loadUrl(HOME_URL + "search?q=" + Uri.encode(query), false);
+
+        // Los resultados se muestran en una pantalla propia que consulta el
+        // feed del blog; así la búsqueda no depende de cargar la página del
+        // buscador de Blogger.
+        Intent intent = new Intent(this, SearchActivity.class);
+        intent.putExtra(SearchActivity.EXTRA_QUERY, query);
+        startActivity(intent);
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
     }
 
     private void openLabel(String label) {
