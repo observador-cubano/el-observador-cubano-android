@@ -32,6 +32,26 @@
     <string name="search_empty">Escribe una palabra para buscar.</string>
     <string name="search_suggestions">Secciones del periódico</string>
 
+    <!-- Buscador nativo -->
+    <string name="search_pill">Buscar</string>
+    <string name="cd_search_clear">Borrar la búsqueda</string>
+    <string name="search_intro_title">Busca en el archivo del periódico</string>
+    <string name="search_intro_message">Escribe al menos dos letras. Los resultados salen del archivo público del blog y necesitan conexión a Internet.</string>
+    <string name="search_too_short">Escribe al menos dos letras para buscar.</string>
+    <string name="search_loading">Buscando artículos…</string>
+    <string name="search_untitled">Artículo sin título</string>
+    <string name="search_no_results_title">Sin resultados</string>
+    <string name="search_no_results_message">No encontramos artículos para «%1$s». Prueba con otra palabra o revisa cómo está escrita.</string>
+    <string name="search_error_title">No se pudo buscar</string>
+    <string name="search_error_message">Revisa la conexión a Internet e inténtalo de nuevo.</string>
+    <string name="search_offline_message">No hay conexión a Internet. Conéctate para buscar en el archivo del periódico.</string>
+    <string name="search_retry">Reintentar</string>
+
+    <plurals name="search_result_count">
+        <item quantity="one">%d resultado</item>
+        <item quantity="other">%d resultados</item>
+    </plurals>
+
     <plurals name="section_article_count">
         <item quantity="one">%d artículo</item>
         <item quantity="other">%d artículos</item>
