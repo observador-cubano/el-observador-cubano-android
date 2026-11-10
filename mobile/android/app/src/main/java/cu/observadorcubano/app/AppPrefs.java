@@ -19,6 +19,9 @@ final class AppPrefs {
     private static final String KEY_TEXT_ZOOM = "textZoom";
     private static final String KEY_DARK_MODE = "darkMode";
     private static final String KEY_DATA_SAVER = "dataSaver";
+    private static final String KEY_NEW_POST_ALERTS = "newPostAlerts";
+
+    private static final String VALUE_ON = "on";
 
     private static final String MODE_SYSTEM = "system";
     private static final String MODE_INAPP = "inapp";
@@ -84,6 +87,22 @@ final class AppPrefs {
     static boolean isDataSaverEnabled(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return DATA_SAVER_ON.equals(prefs.getString(KEY_DATA_SAVER, "off"));
+    }
+
+    /**
+     * Avisos locales de artículos nuevos. La propia app revisa el feed público
+     * del blog; no hay push ni servidor de por medio.
+     */
+    static boolean areNewPostAlertsEnabled(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return VALUE_ON.equals(prefs.getString(KEY_NEW_POST_ALERTS, "off"));
+    }
+
+    static void setNewPostAlertsEnabled(Context context, boolean enabled) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit()
+            .putString(KEY_NEW_POST_ALERTS, enabled ? VALUE_ON : "off")
+            .apply();
     }
 
     /**

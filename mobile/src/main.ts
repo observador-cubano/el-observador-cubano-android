@@ -20,6 +20,7 @@ interface ShellPlugin {
   openSaved(): Promise<void>;
   openHistory(): Promise<void>;
   applyTheme(): Promise<void>;
+  setNewPostAlerts(options: { enabled: boolean }): Promise<{ enabled: boolean; granted: boolean }>;
 }
 
 const Shell = registerPlugin<ShellPlugin>('Shell');
@@ -29,6 +30,7 @@ const DEFAULT_SETTINGS = {
   textZoom: 100,
   darkMode: 'system',
   dataSaver: false,
+  newPostAlerts: false,
 } as const;
 
 type ExternalLinkMode = 'system' | 'inapp';
@@ -39,6 +41,7 @@ interface Settings {
   textZoom: number;
   darkMode: DarkMode;
   dataSaver: boolean;
+  newPostAlerts: boolean;
 }
 
 const SETTING_KEYS = {
@@ -46,6 +49,7 @@ const SETTING_KEYS = {
   textZoom: 'textZoom',
   darkMode: 'darkMode',
   dataSaver: 'dataSaver',
+  newPostAlerts: 'newPostAlerts',
 } as const;
 
 const $ = <T extends Element>(selector: string): T | null =>
@@ -81,11 +85,12 @@ function normalizeDarkMode(value: string | null | undefined): DarkMode {
 }
 
 async function loadSettings(): Promise<Settings> {
-  const [mode, zoom, darkMode, dataSaver] = await Promise.all([
+  const [mode, zoom, darkMode, dataSaver, newPostAlerts] = await Promise.all([
     Preferences.get({ key: SETTING_KEYS.externalLinkMode }),
     Preferences.get({ key: SETTING_KEYS.textZoom }),
     Preferences.get({ key: SETTING_KEYS.darkMode }),
     Preferences.get({ key: SETTING_KEYS.dataSaver }),
+    Preferences.get({ key: SETTING_KEYS.newPostAlerts }),
   ]);
 
   return {
@@ -93,6 +98,7 @@ async function loadSettings(): Promise<Settings> {
     textZoom: clampZoom(Number(zoom.value ?? DEFAULT_SETTINGS.textZoom)),
     darkMode: normalizeDarkMode(darkMode.value),
     dataSaver: dataSaver.value === 'on',
+    newPostAlerts: newPostAlerts.value === 'on',
   };
 }
 
@@ -113,6 +119,9 @@ function applySettingsToForm(settings: Settings): void {
 
   const dataSaver = $('#data-saver') as HTMLInputElement | null;
   if (dataSaver) dataSaver.checked = settings.dataSaver;
+
+  const newPostAlerts = $('#new-post-alerts') as HTMLInputElement | null;
+  if (newPostAlerts) newPostAlerts.checked = settings.newPostAlerts;
 
   const range = $('#text-zoom') as HTMLInputElement | null;
   if (range) range.value = String(settings.textZoom);
@@ -187,6 +196,31 @@ async function openExternal(url: string): Promise<void> {
   }
 }
 
+/** Activa o desactiva los avisos locales revisando el permiso en Android. */
+async function applyNewPostAlerts(enabled: boolean): Promise<void> {
+  const checkbox = $('#new-post-alerts') as HTMLInputElement | null;
+  try {
+    const result = await Shell.setNewPostAlerts({ enabled });
+    if (checkbox) checkbox.checked = result.enabled;
+    if (!result.enabled) {
+      showToast(
+        enabled
+          ? 'No se pudo activar: revisa el permiso de notificaciones'
+          : 'Avisos de artículos nuevos desactivados'
+      );
+      return;
+    }
+    if (!result.granted) {
+      showToast('Avisos activados. Permite las notificaciones en Ajustes de Android');
+      return;
+    }
+    showToast('Te avisaremos de los artículos nuevos');
+  } catch {
+    await saveSetting(SETTING_KEYS.newPostAlerts, enabled ? 'on' : 'off');
+    showToast('Abre la app de Android para cambiar los avisos');
+  }
+}
+
 function bindEvents(): void {
   $('#btn-close')?.addEventListener('click', () => {
     void Shell.close().catch(() => window.history.back());
@@ -238,12 +272,19 @@ function bindEvents(): void {
     });
   });
 
+  const newPostAlerts = $('#new-post-alerts') as HTMLInputElement | null;
+  newPostAlerts?.addEventListener('change', () => {
+    void applyNewPostAlerts(newPostAlerts.checked);
+  });
+
   $('#btn-reset')?.addEventListener('click', () => {
     void Promise.all([
       saveSetting(SETTING_KEYS.externalLinkMode, DEFAULT_SETTINGS.externalLinkMode),
       saveSetting(SETTING_KEYS.textZoom, String(DEFAULT_SETTINGS.textZoom)),
       saveSetting(SETTING_KEYS.darkMode, DEFAULT_SETTINGS.darkMode),
       saveSetting(SETTING_KEYS.dataSaver, 'off'),
+      saveSetting(SETTING_KEYS.newPostAlerts, 'off'),
+      Shell.setNewPostAlerts({ enabled: false }).catch(() => undefined),
     ]).then(() => {
       applySettingsToForm({ ...DEFAULT_SETTINGS });
       void Shell.applyTheme().catch(() => undefined);
