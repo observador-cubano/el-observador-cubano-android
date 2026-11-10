@@ -88,6 +88,7 @@ final class ReaderStyles {
             .eoc-content pre{overflow-x:auto;padding:12px}
             .eoc-content code{padding:2px 5px;font-size:.92em}
             .eoc-content pre code{padding:0}
+            .eoc-image-note{margin:0 0 20px;padding:11px 14px;border:1px solid var(--eoc-border);border-radius:10px;background:var(--eoc-soft);color:var(--eoc-muted);font-size:13px;line-height:1.5}
             .eoc-image-missing{margin:14px 0;padding:12px 14px;border:1px dashed var(--eoc-border);border-radius:10px;background:var(--eoc-soft);color:var(--eoc-muted);font-size:13px;text-align:center}
             .eoc-content table{display:block;overflow-x:auto;border-collapse:collapse}
             .eoc-content th,.eoc-content td{border:1px solid var(--eoc-border);padding:6px 8px}

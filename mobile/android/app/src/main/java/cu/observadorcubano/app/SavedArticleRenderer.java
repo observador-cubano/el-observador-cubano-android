@@ -1,15 +1,18 @@
 package cu.observadorcubano.app;
 
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 /**
- * Construye el documento HTML de un artículo guardado.
+ * Construye el documento HTML de un artículo guardado o del lector nativo.
  *
  * El contenido proviene de la página remota, por lo que se limpia otra vez
  * antes de escribirlo. El documento final no ejecuta JavaScript y solo puede
- * cargar imágenes locales o datos incrustados.
+ * cargar las imágenes permitidas por su política de contenido.
  */
 final class SavedArticleRenderer {
+
+    private static final Pattern IMG_TAG = Pattern.compile("(?is)<img\\b[^>]*>");
 
     private SavedArticleRenderer() {
         // Clase de utilidades.
@@ -23,24 +26,87 @@ final class SavedArticleRenderer {
         String contentHtml,
         boolean dark
     ) {
-        String safeTitle = escapeHtml(trimTo(title, 300));
-        if (safeTitle.isEmpty()) {
-            safeTitle = "Artículo guardado";
-        }
-        String safeByline = escapeHtml(trimTo(byline, 300));
         String safeUrl = escapeHtml(trimTo(sourceUrl, 2000));
         String safeDate = escapeHtml(trimTo(savedDateLabel, 120));
-        String cleanContent = sanitizeContent(contentHtml);
 
         StringBuilder footer = new StringBuilder();
         if (!safeDate.isEmpty()) {
-            footer.append(footer.length() > 0 ? " · " : "").append("Guardado el ").append(safeDate);
+            footer.append("Guardado el ").append(safeDate);
         }
         if (!safeUrl.isEmpty()) {
             footer.append(footer.length() > 0 ? " · " : "").append("Fuente: ").append(safeUrl);
         }
 
+        return buildDocument(
+            title,
+            byline,
+            "Artículo guardado",
+            contentHtml,
+            dark,
+            footer.toString(),
+            "Guardado para leer sin conexión",
+            "img-src 'self' data: file:",
+            ""
+        );
+    }
+
+    /**
+     * Documento del lector nativo para un artículo en línea. Las imágenes solo
+     * pueden llegar por HTTPS y se omiten por completo cuando el ahorro de
+     * datos está activo.
+     */
+    static String renderOnline(
+        String title,
+        String byline,
+        String sourceUrl,
+        String contentHtml,
+        boolean dark,
+        boolean allowImages
+    ) {
+        String safeUrl = escapeHtml(trimTo(sourceUrl, 2000));
+        String footer = safeUrl.isEmpty() ? "" : "Fuente: " + safeUrl;
+
+        String cleanContent = sanitizeContent(contentHtml);
+        boolean hadImages = IMG_TAG.matcher(cleanContent).find();
+        if (!allowImages) {
+            cleanContent = IMG_TAG.matcher(cleanContent).replaceAll("");
+        }
+        String notice = hadImages && !allowImages
+            ? "<p class=\"eoc-image-note\">Las imágenes no se cargan porque el ahorro de datos está activo.</p>"
+            : "";
+
+        return buildDocument(
+            title,
+            byline,
+            "Artículo",
+            cleanContent,
+            dark,
+            footer,
+            "",
+            allowImages ? "img-src https: data:" : "img-src data:",
+            notice
+        );
+    }
+
+    private static String buildDocument(
+        String title,
+        String byline,
+        String fallbackTitle,
+        String contentHtml,
+        boolean dark,
+        String footerText,
+        String bylineFallback,
+        String imageSources,
+        String notice
+    ) {
+        String safeTitle = escapeHtml(trimTo(title, 300));
+        if (safeTitle.isEmpty()) {
+            safeTitle = escapeHtml(trimTo(fallbackTitle, 300));
+        }
+        String safeByline = escapeHtml(trimTo(byline, 300));
+        String cleanContent = sanitizeContent(contentHtml);
         String theme = dark ? "dark" : "light";
+
         StringBuilder html = new StringBuilder(cleanContent.length() + 4096);
         html.append("<!doctype html><html lang=\"es\" data-theme=\"")
             .append(theme)
@@ -48,7 +114,8 @@ final class SavedArticleRenderer {
             .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">")
             .append("<meta name=\"referrer\" content=\"no-referrer\">")
             .append("<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; ")
-            .append("img-src 'self' data: file:; style-src 'unsafe-inline';\">")
+            .append(imageSources)
+            .append("; style-src 'unsafe-inline';\">")
             .append("<title>")
             .append(safeTitle)
             .append("</title><style>")
@@ -61,16 +128,22 @@ final class SavedArticleRenderer {
 
         if (!safeByline.isEmpty()) {
             html.append("<p class=\"eoc-byline\">").append(safeByline).append("</p>");
-        } else {
-            html.append("<p class=\"eoc-byline\">Guardado para leer sin conexión</p>");
+        } else if (!bylineFallback.isEmpty()) {
+            html.append("<p class=\"eoc-byline\">")
+                .append(escapeHtml(bylineFallback))
+                .append("</p>");
+        }
+
+        if (!notice.isEmpty()) {
+            html.append(notice);
         }
 
         html.append("<article class=\"eoc-content\">")
             .append(cleanContent)
             .append("</article>");
 
-        if (footer.length() > 0) {
-            html.append("<footer class=\"eoc-footer\">").append(footer).append("</footer>");
+        if (!footerText.isEmpty()) {
+            html.append("<footer class=\"eoc-footer\">").append(footerText).append("</footer>");
         }
 
         html.append("</main></body></html>");
