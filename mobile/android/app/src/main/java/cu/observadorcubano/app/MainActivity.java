@@ -297,6 +297,7 @@ public class MainActivity extends AppCompatActivity {
 
         updateManager = new UpdateManager(this);
         UpdateNotifier.ensureChannel(this);
+        NewPostsAlerts.sync(this);
         root.postDelayed(() -> runUpdateCheck(false), UPDATE_FIRST_CHECK_DELAY_MS);
 
         connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);

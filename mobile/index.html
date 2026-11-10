@@ -229,16 +229,29 @@
 
         <section class="card" aria-labelledby="notifications-title">
           <h2 id="notifications-title" class="card__title">Notificaciones</h2>
-          <p class="status status--ok"><span class="status__dot" aria-hidden="true"></span> Avisos de actualizaciones</p>
+          <p class="status status--ok"><span class="status__dot" aria-hidden="true"></span> Avisos locales, sin servidores externos</p>
           <p class="card__text">
             Cuando se publica una versión estable más reciente, la app puede avisarte una sola vez.
             Puedes posponerla con «Más tarde» y no volverá a avisar para esa misma versión. En
-            Android 13 o superior el permiso de notificaciones se solicita solo cuando hay una
-            actualización disponible.
+            Android 13 o superior el permiso de notificaciones se solicita solo cuando hace falta.
           </p>
+          <fieldset class="field">
+            <legend class="field__label">Artículos nuevos</legend>
+            <label class="choice">
+              <input id="new-post-alerts" type="checkbox" />
+              <span class="choice__body">
+                <span class="choice__title">Avisarme de publicaciones nuevas</span>
+                <span class="choice__desc">
+                  La app revisa el feed del blog cada 6 horas cuando hay Internet y te avisa de lo
+                  nuevo. No es un servicio push: si el teléfono está apagado o sin conexión, el
+                  aviso llega en la próxima revisión.
+                </span>
+              </span>
+            </label>
+          </fieldset>
           <p class="card__text card__text--muted">
-            Las notificaciones push de artículos nuevos son un canal distinto y requieren un
-            proyecto de Firebase y un servidor de envío; no se muestran avisos simulados.
+            Los avisos se generan en el propio teléfono. No se usa Firebase, no hay servidor de
+            envío y no se comparte ningún dato.
           </p>
         </section>
 

@@ -158,6 +158,12 @@
     <string name="update_channel_description">Avisos de nuevas versiones estables de El Observador Cubano</string>
     <string name="update_notification_title">Nueva versión %1$s disponible</string>
     <string name="update_notification_text">Toca para ver las novedades y actualizar la aplicación.</string>
+
+    <!-- Avisos locales de artículos nuevos -->
+    <string name="new_posts_channel_name">Artículos nuevos</string>
+    <string name="new_posts_channel_description">Avisos locales de nuevas publicaciones detectadas al revisar el blog</string>
+    <string name="new_posts_notification_one">Nuevo en El Observador Cubano · toca para leer</string>
+    <string name="new_posts_notification_many">%1$d artículos nuevos · toca para leer el más reciente</string>
     <string name="update_screen_title">Novedades de la app</string>
     <string name="update_pill">Novedades</string>
     <string name="update_subtitle">Versión instalada %1$s</string>
