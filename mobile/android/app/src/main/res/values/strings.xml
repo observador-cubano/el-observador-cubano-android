@@ -240,4 +240,24 @@
     <string name="update_error_signature">La firma del APK no coincide con la aplicación instalada. Por seguridad se ha cancelado.</string>
     <string name="update_error_generic">No se pudo preparar la actualización.</string>
     <string name="update_error_network">No se pudo comprobar si hay una versión nueva. Revisa la conexión.</string>
+
+    <!-- Atajos del lanzador -->
+    <string name="shortcut_search_short">Buscar</string>
+    <string name="shortcut_search_long">Buscar en el periódico</string>
+    <string name="shortcut_saved_short">Guardados</string>
+    <string name="shortcut_saved_long">Leer artículos guardados</string>
+    <string name="shortcut_history_short">Historial</string>
+    <string name="shortcut_history_long">Continuar leyendo</string>
+
+    <!-- Widget de últimas noticias -->
+    <string name="widget_label">Últimas noticias</string>
+    <string name="widget_description">Las últimas publicaciones de El Observador Cubano</string>
+    <string name="widget_subtitle">Últimas noticias</string>
+    <string name="widget_refresh">Actualizar</string>
+    <string name="widget_empty">Toca actualizar para cargar las últimas noticias.</string>
+    <string name="widget_refreshing">Actualizando…</string>
+    <string name="widget_offline">Sin conexión · se muestran los últimos datos</string>
+    <string name="widget_offline_empty">Sin conexión · toca actualizar</string>
+    <string name="widget_updated">Actualizado a las %1$s</string>
+    <string name="widget_untitled">Nuevo artículo</string>
 </resources>

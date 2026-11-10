@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_search"
+        android:shortcutId="search"
+        android:shortcutLongLabel="@string/shortcut_search_long"
+        android:shortcutShortLabel="@string/shortcut_search_short">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="eoc://search"
+            android:targetClass="cu.observadorcubano.app.MainActivity"
+            android:targetPackage="cu.observadorcubano.app" />
+    </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_saved"
+        android:shortcutId="saved"
+        android:shortcutLongLabel="@string/shortcut_saved_long"
+        android:shortcutShortLabel="@string/shortcut_saved_short">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="eoc://saved"
+            android:targetClass="cu.observadorcubano.app.MainActivity"
+            android:targetPackage="cu.observadorcubano.app" />
+    </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_history"
+        android:shortcutId="history"
+        android:shortcutLongLabel="@string/shortcut_history_long"
+        android:shortcutShortLabel="@string/shortcut_history_short">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="eoc://history"
+            android:targetClass="cu.observadorcubano.app.MainActivity"
+            android:targetPackage="cu.observadorcubano.app" />
+    </shortcut>
+</shortcuts>
