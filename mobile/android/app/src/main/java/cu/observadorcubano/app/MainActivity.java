@@ -317,6 +317,8 @@ public class MainActivity extends AppCompatActivity {
      * lectura guardada en el historial. Si no hay artículo, carga la portada.
      */
     private void openFromIntent(Intent intent) {
+        handleShortcut(intent);
+
         String deepLink = intent != null ? intent.getStringExtra(EXTRA_ARTICLE_URL) : null;
         if (deepLink != null && UrlPolicy.classify(deepLink) == UrlPolicy.Action.INTERNAL) {
             String normalized = UrlPolicy.normalize(deepLink);
@@ -330,6 +332,44 @@ public class MainActivity extends AppCompatActivity {
             pendingRestoreReader = false;
             loadHome(true);
         }
+    }
+
+    /**
+     * Atajos del lanzador. Usan el esquema propio {@code eoc://} para no
+     * exportar las pantallas internas: el atajo apunta a esta actividad, que ya
+     * es pública, y aquí se decide qué abrir.
+     */
+    private boolean handleShortcut(Intent intent) {
+        Uri data = intent != null ? intent.getData() : null;
+        if (data == null || !"eoc".equals(data.getScheme())) {
+            return false;
+        }
+
+        String target = data.getHost();
+        // Se consume el atajo para no repetirlo si la actividad se recrea.
+        intent.setData(null);
+        if (target == null) {
+            return false;
+        }
+
+        Intent next;
+        switch (target) {
+            case "search":
+                next = new Intent(this, SearchActivity.class);
+                break;
+            case "saved":
+                next = new Intent(this, SavedArticlesActivity.class);
+                break;
+            case "history":
+                next = new Intent(this, ReadingHistoryActivity.class);
+                break;
+            default:
+                return false;
+        }
+
+        startActivity(next);
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+        return true;
     }
 
     private void bindViews() {
@@ -2742,6 +2782,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        if (handleShortcut(intent)) {
+            return;
+        }
         String url = intent != null ? intent.getStringExtra(EXTRA_ARTICLE_URL) : null;
         if (url != null && UrlPolicy.classify(url) == UrlPolicy.Action.INTERNAL) {
             String normalized = UrlPolicy.normalize(url);
